@@ -222,10 +222,10 @@ get_discovered_modules() {
 }
 
 install_aur_helper() {
-    log_info "No AUR helper found. Attempting to install 'yay' automatically..."
+    log_info "No AUR helper found. Attempting to install 'paru' automatically..."
     
     if $DRY_RUN; then
-        log_info "Dry Run: Would install git, base-devel, and build yay."
+        log_info "Dry Run: Would install git, base-devel, and build paru."
         return 0
     fi
 
@@ -242,7 +242,7 @@ install_aur_helper() {
 
     local build_dir
     build_dir=$(mktemp -d)
-    log_info "Cloning yay-bin into temporary directory..."
+    log_info "Cloning paru-bin into temporary directory..."
 
     if git clone https://aur.archlinux.org/yay-bin.git "$build_dir" >>"$LOG_FILE" 2>&1; then
         log_info "Building and installing yay..."
@@ -265,10 +265,10 @@ install_aur_helper() {
 }
 
 get_system_aur_helper() {
-    if command -v yay &>/dev/null; then
-        echo "yay"
-    elif command -v paru &>/dev/null; then
+    if command -v paru &>/dev/null; then
         echo "paru"
+    elif command -v yay &>/dev/null; then
+        echo "yay"
     else
         if install_aur_helper; then
             echo "yay"
@@ -376,12 +376,12 @@ phase_setup_desktop_support() {
 
     # Install full Unicode fonts for Qt/Noctalia UI. Monocraft is reserved
     # for Kitty; it is not a suitable system-wide fallback font.
-    local font_packages=(noto-fonts noto-fonts-emoji)
-    if sudo pacman -S --needed --noconfirm uwsm "${font_packages[@]}" 2>>"$LOG_FILE"; then
-        log_success "UWSM and Noto fallback fonts are installed."
+    local desktop_packages=(noto-fonts noto-fonts-emoji ttf-nerd-fonts-symbols qt6ct)
+    if sudo pacman -S --needed --noconfirm uwsm "${desktop_packages[@]}" 2>>"$LOG_FILE"; then
+        log_success "UWSM, Noto fallback fonts, Nerd Font symbols, and Qt cursor support are installed."
     else
-        log_warn "Could not install UWSM and/or Noto fallback fonts."
-        FAILED_PACKAGES+=("uwsm" "${font_packages[@]}")
+        log_warn "Could not install the complete desktop support package set."
+        FAILED_PACKAGES+=("uwsm" "${desktop_packages[@]}")
     fi
 
     local helper
