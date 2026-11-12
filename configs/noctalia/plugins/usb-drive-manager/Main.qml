@@ -22,7 +22,7 @@ Item {
     // ===== SETTINGS SHORTCUTS =====
 
     readonly property bool autoMount:          pluginApi?.pluginSettings?.autoMount          ?? false
-    readonly property string fileBrowser:      pluginApi?.pluginSettings?.fileBrowser        || "yazi"
+    readonly property string fileBrowser:      pluginApi?.pluginSettings?.fileBrowser        || "nautilus"
     readonly property string terminalCommand:  pluginApi?.pluginSettings?.terminalCommand    || "kitty"
     readonly property bool showNotifications:  pluginApi?.pluginSettings?.showNotifications  ?? true
     readonly property bool hideWhenEmpty:      pluginApi?.pluginSettings?.hideWhenEmpty      ?? false
