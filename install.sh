@@ -660,6 +660,22 @@ phase_deploy_configs() {
             log_info "Dry Run: Would copy Pictures/ -> ~/Pictures/"
         fi
     fi
+    
+    if [ -d "assets/gtk" ]; then
+        log_info "Applying Bibata cursor settings to GTK..."
+        if ! $DRY_RUN; then
+            for gtk_version in 3.0 4.0; do
+                local gtk_settings="assets/gtk/gtk-${gtk_version}/settings.ini"
+                if [ -f "$gtk_settings" ]; then
+                    mkdir -p "$HOME/.config/gtk-${gtk_version}"
+                    cp -f "$gtk_settings" "$HOME/.config/gtk-${gtk_version}/settings.ini"
+                fi
+            done
+            log_success "GTK cursor settings applied."
+        else
+            log_info "Dry Run: Would apply GTK cursor settings."
+        fi
+    fi
 }
 
 # ==============================================================================
