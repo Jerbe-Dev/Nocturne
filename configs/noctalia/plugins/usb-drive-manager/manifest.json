@@ -25,7 +25,7 @@
   "metadata": {
     "defaultSettings": {
       "autoMount": false,
-      "fileBrowser": "yazi",
+      "fileBrowser": "nautilus",
       "terminalCommand": "kitty",
       "showNotifications": true,
       "hideWhenEmpty": false,
