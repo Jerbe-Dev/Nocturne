@@ -1,32 +1,18 @@
+// Keep compositor effects light for integrated graphics and low-memory systems.
+// Blur is intentionally disabled; it adds GPU work without improving responsiveness.
 
-//    ██████╗ ███████╗ ██████╗ ██████╗ ██████╗  █████╗ ████████╗██╗ ██████╗ ███╗   ██╗███████╗
-//    ██╔══██╗██╔════╝██╔════╝██╔═══██╗██╔══██╗██╔══██╗╚══██╔══╝██║██╔═══██╗████╗  ██║██╔════╝
-//    ██║  ██║█████╗  ██║     ██║   ██║██████╔╝███████║   ██║   ██║██║   ██║██╔██╗ ██║███████╗
-//    ██║  ██║██╔══╝  ██║     ██║   ██║██╔══██╗██╔══██║   ██║   ██║██║   ██║██║╚██╗██║╚════██║
-//    ██████╔╝███████╗╚██████╗╚██████╔╝██║  ██║██║  ██║   ██║   ██║╚██████╔╝██║ ╚████║███████║
-//    ╚═════╝ ╚══════╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝
-//                                                                                            
-
-// blur is introduced in Niri version 26.04 make sure you have that
-blur {
-  passes 2      // more passes = stronger blur
-  offset 3.0     // sample distance per pass 
-  noise 0.03     // grain overlay 
-  saturation 1.0 // color saturation boost 
-}
-
-// Recent Windows (Alt+Tab)// 
+// Recent Windows (Alt+Tab)
 recent-windows {
     highlight {
         active-color "#999999ff"
         urgent-color "#ff9999ff"
-        padding 30
-        corner-radius 10
+        padding 24
+        corner-radius 8
     }
 
     previews {
-        max-height 480
-        max-scale 0.5
+        max-height 360
+        max-scale 0.4
     }
 
     binds {
