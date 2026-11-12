@@ -364,6 +364,48 @@ phase_setup_audio_bluetooth() {
     log_info "PipeWire runs as a user service after login; no system-wide audio daemon is started."
 }
 
+
+phase_setup_desktop_support() {
+    log_step "Setting Up Desktop Session, Font, and Cursor"
+    if $DRY_RUN; then
+        log_info "Dry Run: Would install UWSM, Monocraft Nerd Font, and Bibata cursor theme."
+        return
+    fi
+
+    if ! sudo pacman -S --needed --noconfirm uwsm 2>>"$LOG_FILE"; then
+        log_warn "Could not install UWSM. Automatic TTY startup may not work until it is installed."
+        FAILED_PACKAGES+=("uwsm")
+    else
+        log_success "UWSM is installed for automatic Niri startup."
+    fi
+
+    local helper
+    helper=$(get_system_aur_helper)
+    if [ -z "$helper" ]; then
+        log_warn "No AUR helper available; skipping Monocraft and Bibata packages."
+        FAILED_PACKAGES+=("ttf-monocraft-nerd" "bibata-cursor-theme")
+        return
+    fi
+
+    if "$helper" -S --needed --noconfirm ttf-monocraft-nerd 2>>"$LOG_FILE"; then
+        log_success "Monocraft Nerd Font is installed."
+    else
+        log_warn "Could not install ttf-monocraft-nerd from the AUR."
+        FAILED_PACKAGES+=("ttf-monocraft-nerd")
+    fi
+
+    if "$helper" -S --needed --noconfirm bibata-cursor-theme 2>>"$LOG_FILE"; then
+        log_success "Bibata cursor theme is installed."
+    else
+        log_warn "Could not install bibata-cursor-theme from the AUR."
+        FAILED_PACKAGES+=("bibata-cursor-theme")
+    fi
+
+    if command -v fc-cache &>/dev/null; then
+        fc-cache -f >/dev/null 2>&1 || true
+    fi
+}
+
 phase_system_refresh() {
     log_step "Updating Your System"
     if $DRY_RUN; then log_info "Dry Run: Skipping system updates."; return; fi
@@ -826,6 +868,7 @@ run_orchestrated_installer() {
     phase_build_noctalia
     phase_system_refresh
     phase_setup_audio_bluetooth
+    phase_setup_desktop_support
     phase_inspect_dependencies
     phase_resolve_dependencies
     phase_execute_backup
