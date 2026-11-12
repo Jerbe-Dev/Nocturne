@@ -1356,7 +1356,7 @@ declare -A PACKAGE_MAP=(
 # Yazi is intentionally excluded: Nautilus is the chosen file manager.
 readonly DEFAULT_APP_ORDER=(
     "cliphist" "playerctl" "brightnessctl" "nautilus" "brave"
-    "vscodium" "obsidian" "spotify" "spicetify" "polkit-gnome"
+    "vscodium" "obsidian" "riff" "polkit-gnome"
     "pavucontrol" "python" "unzip"
 )
 declare -A DEFAULT_APP_BINARY_MAP=(
@@ -1367,8 +1367,7 @@ declare -A DEFAULT_APP_BINARY_MAP=(
     ["brave"]="brave"
     ["vscodium"]="codium"
     ["obsidian"]="obsidian"
-    ["spotify"]="spotify"
-    ["spicetify"]="spicetify"
+    ["riff"]="riff"
     ["polkit-gnome"]="polkit-gnome-authentication-agent-1"
     ["pavucontrol"]="pavucontrol"
     ["python"]="python"
@@ -1382,8 +1381,7 @@ declare -A DEFAULT_APP_PACKAGE_MAP=(
     ["brave"]="brave-bin"
     ["vscodium"]="vscodium-bin"
     ["obsidian"]="obsidian"
-    ["spotify"]="spotify"
-    ["spicetify"]="spicetify-cli"
+    ["riff"]="Riff AppImage"
     ["polkit-gnome"]="polkit-gnome"
     ["pavucontrol"]="pavucontrol"
     ["python"]="python"
