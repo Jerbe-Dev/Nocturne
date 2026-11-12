@@ -75,7 +75,7 @@ declare -A PACKAGE_MAP=(
 
 # --- Keep track of what actually happened ---
 CURRENT_STEP=0
-TOTAL_STEPS=11
+TOTAL_STEPS=12
 
 INSTALLED_CONFIGS=()
 SKIPPED_CONFIGS=()
