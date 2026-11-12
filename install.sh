@@ -494,6 +494,18 @@ phase_inspect_dependencies() {
             log_warn "Missing: $mod (Needs package: $target_pkg)"
         fi
     done
+
+    local app
+    for app in "${DEFAULT_APP_ORDER[@]}"; do
+        local check_cmd="${DEFAULT_APP_BINARY_MAP[$app]}"
+        local target_pkg="${DEFAULT_APP_PACKAGE_MAP[$app]}"
+        if command -v "$check_cmd" &>/dev/null; then
+            log_success "Found app: $app"
+            ALREADY_PRESENT_PACKAGES+=("$target_pkg")
+        else
+            log_warn "Missing app: $app (Needs package: $target_pkg)"
+        fi
+    done
 }
 
 phase_resolve_dependencies() {
@@ -861,6 +873,10 @@ phase_install_shell_config() {
 
 phase_setup_firewalls_and_noctalia() {
     log_step "Setting Up FireWalls Wallpapers and Noctalia Preferences"
+    if $DRY_RUN; then
+        log_info "Dry Run: Skipping wallpaper download and live Noctalia changes."
+        return
+    fi
 
     local wallpaper_repo="$HOME/Pictures/FireWalls"
     local wallpaper_dir="$wallpaper_repo/Desktop/Wallpapers/Best-Collection"
