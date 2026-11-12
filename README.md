@@ -39,7 +39,7 @@
 
 ## ✨ Overview
 
-**Noctara-dots** is a modular, ready-to-use desktop rice for **Arch Linux**, built around **Noctalia v5** for both **Niri** and **Hyprland** Wayland compositors.
+**Noctara-dots** is a modular, ready-to-use desktop rice for **Arch Linux**, built around **Noctalia v5** for both **Niri** Wayland compositor.
 
 Instead of spending days manually tweaking individual configuration files, themes, animations, and keybindings, Noctara-dots delivers an out-of-the-box desktop experience that looks great and stays easy to customize.
 
@@ -114,7 +114,7 @@ Noctara-dots bridges this gap by unifying these components into a consistent, mo
 - 🚀 **Automated Installer:** Setup script handles packages, dependencies, and shell selection.
 - 📦 **Smart Backups:** Automatic backup and restore support for existing configuration files.
 - 🧩 **Fully Modular:** Clean, organized directory structure for easy customization.
-- 🪟 **Compositor Support:** Out-of-the-box profiles for **Niri**, **Hyprland** and **Mango**.
+- 🪟 **Compositor Support:** Out-of-the-box profiles for **Niri**.
 - 💻 **Complete Workflow:** Integrated terminal apps, media tools, and resource monitoring.
 
 ---
@@ -124,12 +124,12 @@ Noctara-dots bridges this gap by unifying these components into a consistent, mo
 | Component          | Software        |
 | :----------------- | :-------------- |
 | **Desktop Shell**  | Noctalia v5     |
-| **Window Manager** | Niri / Hyprland |
+| **Window Manager** | Niri |
 | **Terminal**       | Kitty           |
 | **Shell**          | Fish            |
 | **Prompt**         | Starship        |
 | **Editor**         | Neovim          |
-| **File Manager**   | Yazi            |
+| **File Manager**   | Nautilus         |
 | **Music**          | MPD + rmpc      |
 | **Media Player**   | MPV             |
 | **System Info**    | Fastfetch       |
@@ -238,9 +238,9 @@ You can mix and match components however you'd like.
 | Shortcut  | Action       |
 | --------- | ------------ |
 | Super + T | Kitty        |
-| Super + B | Browser      |
-| Super + E | File Manager |
-| Super + M | Music        |
+| Super + B | Brave        |
+| Super + E | Nautilus     |
+| Super + M | rmpc (MPD)   |
 | Super + O | Notes        |
 | Super + C | Code Editor  |
 
@@ -256,12 +256,12 @@ You can mix and match components however you'd like.
 
 | Category        | Application |
 | --------------- | ----------- |
-| 🌐 Browser      | Helium      |
+| 🌐 Browser      | Brave       |
 | 💻 Terminal     | Kitty       |
 | 📝 Code Editor  | VSCodium    |
 | 📖 Notes        | Obsidian    |
-| 📂 File Manager | Thunar      |
-| 🎵 Music        | Spotify     |
+| 📂 File Manager | Nautilus     |
+| 🎵 Music        | MPD + rmpc   |
 
 All shortcuts are configured around these applications by default, but changing them only requires editing a few lines thanks to the modular configuration.
 
