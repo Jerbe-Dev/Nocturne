@@ -112,6 +112,9 @@ Noctara-dots bridges this gap by unifying these components into a consistent, mo
 ## ✨ Features
 
 - 🚀 **Automated Installer:** Setup script handles packages, dependencies, and shell selection.
+- 🖥️ **TTY Auto-Start:** Logs into Niri automatically after a TTY login, without a display manager.
+- 🖱️ **Bibata Cursor:** Applies Bibata Modern Classic to Niri and GTK apps.
+- 🔤 **Monocraft:** Uses the Monocraft font family in Kitty.
 - 📦 **Smart Backups:** Automatic backup and restore support for existing configuration files.
 - 🧩 **Fully Modular:** Clean, organized directory structure for easy customization.
 - 🪟 **Compositor Support:** Out-of-the-box profiles for **Niri**.
@@ -174,6 +177,8 @@ Run the installer:
 ```bash
 ./install.sh
 ```
+
+The installer configures TTY auto-start for the selected Fish or Zsh login shell. UWSM is installed to launch Niri as a managed session. No display manager is required.
 
 When the installation is complete:
 
