@@ -75,7 +75,7 @@ declare -A PACKAGE_MAP=(
 
 # --- Keep track of what actually happened ---
 CURRENT_STEP=0
-TOTAL_STEPS=10
+TOTAL_STEPS=11
 
 INSTALLED_CONFIGS=()
 SKIPPED_CONFIGS=()
@@ -325,6 +325,43 @@ phase_build_noctalia() {
         log_fail "The AUR hated that. Noctalia install failed."
         exit 1
     fi
+}
+
+phase_setup_audio_bluetooth() {
+    log_step "Setting Up Audio and Bluetooth"
+    if $DRY_RUN; then
+        log_info "Dry Run: Would install PipeWire, WirePlumber, SOF firmware, and Bluetooth support."
+        return
+    fi
+
+    if ! $HAS_INTERNET; then
+        log_warn "No internet. Audio/Bluetooth packages cannot be installed now."
+        return
+    fi
+
+    local audio_bt_packages=(pipewire pipewire-alsa pipewire-pulse wireplumber sof-firmware bluez bluez-utils)
+    log_info "Installing audio, Intel SOF firmware, and Bluetooth packages..."
+    if ! sudo pacman -S --needed --noconfirm "${audio_bt_packages[@]}" 2>>"$LOG_FILE"; then
+        log_fail "Could not install the complete audio/Bluetooth package set."
+        FAILED_PACKAGES+=("${audio_bt_packages[*]}")
+        return
+    fi
+
+    log_success "Audio and Bluetooth packages are installed."
+
+    if sudo systemctl enable bluetooth.service >>"$LOG_FILE" 2>&1; then
+        log_success "Bluetooth service enabled."
+    else
+        log_fail "Could not enable bluetooth.service."
+    fi
+
+    if systemctl --global enable pipewire.socket pipewire-pulse.socket >>"$LOG_FILE" 2>&1; then
+        log_success "PipeWire user sockets enabled globally."
+    else
+        log_warn "Could not enable PipeWire sockets globally; they may still start through package presets."
+    fi
+
+    log_info "PipeWire runs as a user service after login; no system-wide audio daemon is started."
 }
 
 phase_system_refresh() {
@@ -788,6 +825,7 @@ run_orchestrated_installer() {
     phase_validate_env
     phase_build_noctalia
     phase_system_refresh
+    phase_setup_audio_bluetooth
     phase_inspect_dependencies
     phase_resolve_dependencies
     phase_execute_backup
