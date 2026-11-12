@@ -8,1287 +8,7 @@
 
 # Paranoia mode: Fail fast on errors, unset variables, and pipeline breaks
 set -euo pipefail
-IFS=
-# --- Stopwatch start ---
-START_TIME=$(date +%s)
-readonly START_TIME
-
-# --- The constants we don't want to mess up ---
-readonly VERSION="3.2.0"
-readonly AUTHOR="Gigi"
-readonly LOG_DIR="$HOME/.cache/noctara-dots"
-readonly LOG_FILE="$LOG_DIR/install.log"
-TIMESTAMP=$(date +%Y-%m-%d-%H%M%S)
-readonly TIMESTAMP
-readonly BACKUP_DIR="$HOME/.config-backup-$TIMESTAMP"
-
-# --- Pretty terminal colors ---
-readonly NC='\033[0m'
-readonly BOLD='\033[1m'
-readonly RED='\033[0;31m'
-readonly GREEN='\033[0;32m'
-readonly YELLOW='\033[0;33m'
-readonly BLUE='\033[0;34m'
-readonly PURPLE='\033[0;35m'
-readonly CYAN='\033[0;36m'
-
-# --- Order matters for these guys ---
-readonly PREFERRED_ORDER=(
-    "niri"
-    "noctalia"
-    "kitty"
-    "waybar"
-    "mpd"
-    "mpv"
-    "fastfetch"
-    "rmpc"
-)
-
-# --- Mapping commands to their actual package names ---
-declare -A BINARY_MAP=(
-    ["nvim"]="nvim"
-    ["kitty"]="kitty"
-    ["waybar"]="waybar"
-    ["fastfetch"]="fastfetch"
-    ["mpv"]="mpv"
-    ["mpd"]="mpd"
-    ["niri"]="niri"
-    ["noctalia"]="noctalia"
-    ["rmpc"]="rmpc"
-    ["yazi"]="yazi"
-)
-
-declare -A PACKAGE_MAP=(
-    ["nvim"]="neovim"
-    ["kitty"]="kitty"
-    ["waybar"]="waybar"
-    ["fastfetch"]="fastfetch"
-    ["mpv"]="mpv"
-    ["mpd"]="mpd"
-    ["niri"]="niri"
-    ["noctalia"]="noctalia-git"
-    ["rmpc"]="rmpc"
-    ["yazi"]="yazi"
-)
-
-# Everyday applications carried over from Jerbe-Dev/Niri.
-# Yazi is intentionally excluded: Nautilus is the chosen file manager.
-readonly DEFAULT_APP_ORDER=(
-    "cliphist" "playerctl" "brightnessctl" "nautilus" "brave"
-    "vscodium" "obsidian" "riff" "polkit-gnome"
-    "pavucontrol" "python" "unzip"
-)
-declare -A DEFAULT_APP_BINARY_MAP=(
-    ["cliphist"]="cliphist"
-    ["playerctl"]="playerctl"
-    ["brightnessctl"]="brightnessctl"
-    ["nautilus"]="nautilus"
-    ["brave"]="brave"
-    ["vscodium"]="codium"
-    ["obsidian"]="obsidian"
-    ["riff"]="riff"
-    ["polkit-gnome"]="polkit-gnome-authentication-agent-1"
-    ["pavucontrol"]="pavucontrol"
-    ["python"]="python"
-    ["unzip"]="unzip"
-)
-declare -A DEFAULT_APP_PACKAGE_MAP=(
-    ["cliphist"]="cliphist"
-    ["playerctl"]="playerctl"
-    ["brightnessctl"]="brightnessctl"
-    ["nautilus"]="nautilus"
-    ["brave"]="brave-bin"
-    ["vscodium"]="vscodium-bin"
-    ["obsidian"]="obsidian"
-    ["riff"]="Riff AppImage"
-    ["polkit-gnome"]="polkit-gnome"
-    ["pavucontrol"]="pavucontrol"
-    ["python"]="python"
-    ["unzip"]="unzip"
-)
-
-# --- Keep track of what actually happened ---
-CURRENT_STEP=0
-TOTAL_STEPS=14
-
-INSTALLED_CONFIGS=()
-SKIPPED_CONFIGS=()
-FAILED_CONFIGS=()
-INSTALLED_PACKAGES=()
-ALREADY_PRESENT_PACKAGES=()
-FAILED_PACKAGES=()
-
-DRY_RUN=false
-HAS_INTERNET=true
-
-# ==============================================================================
-# 1. Boring setup stuff (Logs & error handling)
-# ==============================================================================
-
-mkdir -p "$LOG_DIR"
-echo "=== Noctara Installer woke up at $(date) ===" > "$LOG_FILE"
-
-log_to_file() {
-    local level="$1"
-    local msg="$2"
-    echo "[$(date +'%Y-%m-%d %H:%M:%S')] [$level] $msg" >> "$LOG_FILE"
-}
-
-cleanup_handler() {
-    local exit_code=$?
-    if [ "$exit_code" -ne 0 ]; then
-        echo -e "\n\n${RED}${BOLD}❌ Whoops! Script died a horrible death. Autopsy report here: $LOG_FILE${NC}" >&2
-        log_to_file "FATAL" "Script crashed and burned."
-    fi
-    exit "$exit_code"
-}
-trap cleanup_handler EXIT
-trap 'exit 130' SIGINT SIGTERM
-
-# ==============================================================================
-# 2. UI / Making things look nice
-# ==============================================================================
-
-print_banner() {
-    clear
-    echo -e "${PURPLE}"
-    echo '███╗   ██╗ ██████╗  ██████╗████████╗ █████╗ ██████╗  █████╗ '
-    echo '████╗  ██║██╔═══██╗██╔════╝╚══██╔══╝██╔══██╗██╔══██╗██╔══██╗'
-    echo '██╔██╗ ██║██║   ██║██║        ██║   ███████║██████╔╝███████║'
-    echo '██║╚██╗██║██║   ██║██║        ██║   ██╔══██║██╔══██╗██╔══██║'
-    echo '██║ ╚████║╚██████╔╝╚██████╗   ██║   ██║  ██║██║  ██║██║  ██║'
-    echo '╚═╝  ╚═══╝ ╚═════╝  ╚═════╝   ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝'
-    echo -e "${NC}"
-    echo -e "  ${BOLD}Version:${NC} ${YELLOW}$VERSION${NC} | ${BOLD}Chef:${NC} ${YELLOW}$AUTHOR${NC} | ${BOLD}Log:${NC} ${BLUE}$LOG_FILE${NC}"
-    echo -e "───────────────────────────────────────────────────────────────────\n"
-}
-
-render_progress() {
-    local percent=$1
-    local width=30
-    local filled=$(( percent * width / 100 ))
-    local empty=$(( width - filled ))
-    
-    printf "  Progress: [" >&2
-    if [ "$filled" -gt 0 ]; then
-        printf "%${filled}s" "" | tr ' ' '█' >&2
-    fi
-    if [ "$empty" -gt 0 ]; then
-        printf "%${empty}s" "" | tr ' ' '░' >&2
-    fi
-    printf "] %d%%\n\n" "$percent" >&2
-}
-
-log_step() {
-    ((++CURRENT_STEP))
-    local title="$1"
-    local pct=$(( (CURRENT_STEP * 100) / TOTAL_STEPS ))
-    
-    echo -e "\n${BLUE}${BOLD}───────────────────────────────────────────────────────────────────${NC}" >&2
-    echo -e "${BLUE}${BOLD}[$CURRENT_STEP/$TOTAL_STEPS] $title${NC}" >&2
-    echo -e "${BLUE}${BOLD}───────────────────────────────────────────────────────────────────${NC}" >&2
-    render_progress "$pct"
-    log_to_file "STEP" "Now doing: $title"
-}
-
-log_success() { echo -e "  ${GREEN}✔${NC} $1" >&2; log_to_file "SUCCESS" "$1"; }
-log_fail()    { echo -e "  ${RED}❌${NC} $1" >&2; log_to_file "ERROR" "$1"; }
-log_info()    { echo -e "  ${CYAN}ℹ${NC} $1" >&2; log_to_file "INFO" "$1"; }
-log_warn()    { echo -e "  ${YELLOW}⚠${NC} $1" >&2; log_to_file "WARN" "$1"; }
-
-# ==============================================================================
-# 3. Environment & Sanity Checks
-# ==============================================================================
-
-verify_environment() {
-    if [ ! -d "configs" ]; then
-        log_fail "Where are you? Run this script from inside the git repository."
-        exit 1
-    fi
-    if [ ! -f /etc/arch-release ]; then
-        log_fail "No Arch? No rice. We need Arch Linux for this to work."
-        exit 1
-    fi
-}
-
-probe_network() {
-    log_to_file "NETWORK" "Pinging the outside world..."
-    if { true > "/dev/tcp/1.1.1.1/53"; } &>/dev/null || \
-       { true > "/dev/tcp/8.8.8.8/53"; } &>/dev/null; then
-        HAS_INTERNET=true
-        log_to_file "NETWORK" "We have internet!"
-    else
-        HAS_INTERNET=false
-        log_to_file "NETWORK" "You're offline. Some stuff is gonna fail."
-    fi
-}
-
-get_discovered_modules() {
-    local dynamic_modules=()
-    local ordered_item
-    
-    for ordered_item in "${PREFERRED_ORDER[@]}"; do
-        if [ -d "configs/$ordered_item" ]; then
-            dynamic_modules+=("$ordered_item")
-        fi
-    done
-    
-    if [ -d "configs" ]; then
-        local entry
-        for entry in configs/*; do
-            if [ -d "$entry" ]; then
-                local base_entry="${entry##*/}"
-
-                # The user chose Nautilus; never deploy or install the old Yazi config.
-                if [[ "$base_entry" == "yazi" ]]; then
-                    continue
-                fi
-
-                local is_known=false
-                local known_item
-                for known_item in "${dynamic_modules[@]}"; do
-                    if [[ "$known_item" == "$base_entry" ]]; then
-                        is_known=true
-                        break
-                    fi
-                done
-                if ! $is_known; then
-                    dynamic_modules+=("$base_entry")
-                fi
-            fi
-        done
-    fi
-    printf '%s\n' "${dynamic_modules[@]}"
-}
-
-install_aur_helper() {
-    log_info "No AUR helper found. Attempting to install 'paru' automatically..."
-    
-    if $DRY_RUN; then
-        log_info "Dry Run: Would install git, base-devel, and build paru."
-        return 0
-    fi
-
-    if ! $HAS_INTERNET; then
-        log_fail "No internet connection. Cannot install an AUR helper."
-        return 1
-    fi
-
-    log_info "Installing build dependencies (git, base-devel)..."
-    if ! sudo pacman -S --needed --noconfirm git base-devel 2>>"$LOG_FILE"; then
-        log_fail "Failed to install base-devel and git via pacman."
-        return 1
-    fi
-
-    local build_dir
-    build_dir=$(mktemp -d)
-    log_info "Cloning paru-bin into temporary directory..."
-
-    if git clone https://aur.archlinux.org/paru-bin.git "$build_dir" >>"$LOG_FILE" 2>&1; then
-        log_info "Installing paru..."
-        
-        if (cd "$build_dir" && makepkg -si --noconfirm) >>"$LOG_FILE" 2>&1; then
-            rm -rf "$build_dir"
-            log_success "'paru' installed successfully!"
-            INSTALLED_PACKAGES+=("paru")
-            return 0
-        else
-            rm -rf "$build_dir"
-            log_fail "Failed to install 'paru' from the AUR."
-            return 1
-        fi
-    else
-        rm -rf "$build_dir"
-        log_fail "Failed to clone paru-bin repository from AUR."
-        return 1
-    fi
-}
-
-get_system_aur_helper() {
-    if command -v paru &>/dev/null; then
-        echo "paru"
-    elif command -v yay &>/dev/null; then
-        echo "yay"
-    else
-        if install_aur_helper; then
-            echo "paru"
-        else
-            echo ""
-        fi
-    fi
-}
-
-# ==============================================================================
-# 4. The actual heavy lifting
-# ==============================================================================
-
-phase_validate_env() {
-    log_step "Checking Window Manager"
-    if ! command -v niri &>/dev/null && ! command -v hyprland &>/dev/null; then
-        log_warn "Neither Niri nor Hyprland was detected on your system. You sure about this?"
-    elif command -v hyprland &>/dev/null && command -v niri &>/dev/null; then
-        log_success "Both Hyprland and Niri detected! We are good to go."
-    elif command -v hyprland &>/dev/null; then
-        log_success "Hyprland detected. We are good to go."
-    else
-        log_success "Niri detected. We are good to go."
-    fi
-}
-
-phase_build_noctalia() {
-    log_step "Checking for Noctalia Shell"
-    if command -v noctalia &>/dev/null; then
-        log_success "Noctalia is already chilling on your system."
-        ALREADY_PRESENT_PACKAGES+=("noctalia-git")
-        return
-    fi
-
-    log_warn "Noctalia shell is missing. Time to bother the AUR..."
-    if $DRY_RUN; then log_info "Dry Run: Skipping the Noctalia build."; return; fi
-    if ! $HAS_INTERNET; then
-        log_fail "No internet. Noctalia cannot be installed right now; continuing with the rest of the setup."
-        FAILED_PACKAGES+=("noctalia-git")
-        return
-    fi
-
-    local helper
-    helper=$(get_system_aur_helper)
-    if [ -z "$helper" ]; then
-        log_fail "No AUR helper is available. Skipping Noctalia for now and continuing."
-        FAILED_PACKAGES+=("noctalia-git")
-        return
-    fi
-
-    log_info "Telling $helper to go fetch noctalia-git..."
-    if "$helper" -S --needed --noconfirm noctalia-git 2>>"$LOG_FILE"; then
-        log_success "Noctalia installed perfectly."
-        INSTALLED_PACKAGES+=("noctalia-git")
-    else
-        log_fail "Noctalia install failed. Continuing so the remaining desktop setup can finish."
-        FAILED_PACKAGES+=("noctalia-git")
-    fi
-}
-
-phase_setup_audio_bluetooth() {
-    log_step "Setting Up Audio and Bluetooth"
-    if $DRY_RUN; then
-        log_info "Dry Run: Would install PipeWire, WirePlumber, SOF firmware, and Bluetooth support."
-        return
-    fi
-
-    if ! $HAS_INTERNET; then
-        log_warn "No internet. Audio/Bluetooth packages cannot be installed now."
-        return
-    fi
-
-    local audio_bt_packages=(pipewire pipewire-alsa pipewire-pulse wireplumber sof-firmware bluez bluez-utils)
-    log_info "Installing audio, Intel SOF firmware, and Bluetooth packages..."
-    if ! sudo pacman -S --needed --noconfirm "${audio_bt_packages[@]}" 2>>"$LOG_FILE"; then
-        log_fail "Could not install the complete audio/Bluetooth package set."
-        FAILED_PACKAGES+=("${audio_bt_packages[*]}")
-        return
-    fi
-
-    log_success "Audio and Bluetooth packages are installed."
-
-    if sudo systemctl enable bluetooth.service >>"$LOG_FILE" 2>&1; then
-        log_success "Bluetooth service enabled."
-    else
-        log_fail "Could not enable bluetooth.service."
-    fi
-
-    if systemctl --global enable pipewire.socket pipewire-pulse.socket >>"$LOG_FILE" 2>&1; then
-        log_success "PipeWire user sockets enabled globally."
-    else
-        log_warn "Could not enable PipeWire sockets globally; they may still start through package presets."
-    fi
-
-    log_info "PipeWire runs as a user service after login; no system-wide audio daemon is started."
-}
-
-
-phase_setup_desktop_support() {
-    log_step "Setting Up Desktop Session, Font, and Cursor"
-    if $DRY_RUN; then
-        log_info "Dry Run: Would install UWSM, Monocraft Nerd Font, and Bibata cursor theme."
-        return
-    fi
-
-    # Install full Unicode fonts for Qt/Noctalia UI. Monocraft is reserved
-    # for Kitty; it is not a suitable system-wide fallback font.
-    local desktop_packages=(noto-fonts noto-fonts-emoji ttf-nerd-fonts-symbols qt6ct)
-    if sudo pacman -S --needed --noconfirm uwsm "${desktop_packages[@]}" 2>>"$LOG_FILE"; then
-        log_success "UWSM, Noto fallback fonts, Nerd Font symbols, and Qt cursor support are installed."
-    else
-        log_warn "Could not install the complete desktop support package set."
-        FAILED_PACKAGES+=("uwsm" "${desktop_packages[@]}")
-    fi
-
-    local helper
-    helper=$(get_system_aur_helper)
-    if [ -z "$helper" ]; then
-        log_warn "No AUR helper available; skipping Monocraft and Bibata packages."
-        FAILED_PACKAGES+=("ttf-monocraft-nerd" "bibata-cursor-theme")
-        return
-    fi
-
-    if "$helper" -S --needed --noconfirm ttf-monocraft-nerd 2>>"$LOG_FILE"; then
-        log_success "Monocraft Nerd Font is installed."
-    else
-        log_warn "Could not install ttf-monocraft-nerd from the AUR."
-        FAILED_PACKAGES+=("ttf-monocraft-nerd")
-    fi
-
-    if "$helper" -S --needed --noconfirm bibata-cursor-theme 2>>"$LOG_FILE"; then
-        log_success "Bibata cursor theme is installed."
-    else
-        log_warn "Could not install bibata-cursor-theme from the AUR."
-        FAILED_PACKAGES+=("bibata-cursor-theme")
-    fi
-
-    if command -v fc-cache &>/dev/null; then
-        fc-cache -f >/dev/null 2>&1 || true
-    fi
-}
-
-phase_system_refresh() {
-    log_step "Updating Your System"
-    if $DRY_RUN; then log_info "Dry Run: Skipping system updates."; return; fi
-    if ! $HAS_INTERNET; then
-        log_warn "You're offline. Skipping pacman updates."
-        return
-    fi
-
-    read -rp "  Wanna run a quick pacman upgrade first? [Y/n]: " choice
-    choice=${choice:-Y}
-    if [[ "$choice" =~ ^[Yy]$ ]]; then
-        log_info "Unleashing pacman..."
-        if sudo pacman -Syu --noconfirm; then
-            log_success "System is fresh and clean."
-        else
-            log_fail "Pacman tripped over something. Fix your mirrors maybe?"
-            exit 1
-        fi
-    else
-        log_info "Living dangerously. Skipping system update."
-    fi
-}
-
-phase_inspect_dependencies() {
-    log_step "Checking Your Installed Toys"
-    local modules
-    mapfile -t modules < <(get_discovered_modules)
-    
-    local mod
-    for mod in "${modules[@]}"; do
-        local check_cmd="${BINARY_MAP[$mod]:-"$mod"}"
-        local target_pkg="${PACKAGE_MAP[$mod]:-"$mod"}"
-        
-        if command -v "$check_cmd" &>/dev/null; then
-            log_success "Found: $mod"
-            ALREADY_PRESENT_PACKAGES+=("$target_pkg")
-        else
-            log_warn "Missing: $mod (Needs package: $target_pkg)"
-        fi
-    done
-
-    local app
-    for app in "${DEFAULT_APP_ORDER[@]}"; do
-        local check_cmd="${DEFAULT_APP_BINARY_MAP[$app]}"
-        local target_pkg="${DEFAULT_APP_PACKAGE_MAP[$app]}"
-        if command -v "$check_cmd" &>/dev/null; then
-            log_success "Found app: $app"
-            ALREADY_PRESENT_PACKAGES+=("$target_pkg")
-        else
-            log_warn "Missing app: $app (Needs package: $target_pkg)"
-        fi
-    done
-}
-
-phase_resolve_dependencies() {
-    log_step "Installing The Missing Stuff"
-    if $DRY_RUN; then log_info "Dry Run: Not installing anything today."; return; fi
-    if ! $HAS_INTERNET; then
-        log_warn "No internet, no packages. Skipping."
-        return
-    fi
-
-    local modules
-    mapfile -t modules < <(get_discovered_modules)
-    local missing_pkgs=()
-
-    local mod
-    for mod in "${modules[@]}"; do
-        local check_cmd="${BINARY_MAP[$mod]:-"$mod"}"
-        local target_pkg="${PACKAGE_MAP[$mod]:-"$mod"}"
-        
-        if ! command -v "$check_cmd" &>/dev/null; then
-            missing_pkgs+=("$target_pkg")
-        fi
-    done
-
-    local app
-    for app in "${DEFAULT_APP_ORDER[@]}"; do
-        local check_cmd="${DEFAULT_APP_BINARY_MAP[$app]}"
-        local target_pkg="${DEFAULT_APP_PACKAGE_MAP[$app]}"
-        # Riff is installed from its official AppImage release, not pacman/AUR.
-        if [[ "$app" == "riff" ]]; then
-            continue
-        fi
-        if ! command -v "$check_cmd" &>/dev/null; then
-            missing_pkgs+=("$target_pkg")
-        fi
-    done
-
-    if [ ${#missing_pkgs[@]} -eq 0 ]; then
-        log_success "You already have everything installed. Nice."
-        return
-    fi
-
-    echo -e "  You're missing these packages: ${YELLOW}${missing_pkgs[*]}${NC}"
-    read -rp "  Install them now? [Y/n]: " choice
-    choice=${choice:-Y}
-
-    if [[ ! "$choice" =~ ^[Yy]$ ]]; then
-        log_warn "Skipped package installs. Stuff might look broken later."
-        return
-    fi
-
-    local helper
-    helper=$(get_system_aur_helper)
-
-    local pkg
-    for pkg in "${missing_pkgs[@]}"; do
-        log_info "Grabbin': $pkg"
-        if sudo pacman -S --needed --noconfirm "$pkg" 2>>"$LOG_FILE"; then
-            log_success "Got it from official repos: $pkg"
-            INSTALLED_PACKAGES+=("$pkg")
-        else
-            if [ -n "$helper" ]; then
-                log_info "Not in pacman. Let's ask $helper to find it..."
-                if "$helper" -S --needed --noconfirm "$pkg" 2>>"$LOG_FILE"; then
-                    log_success "Got it from AUR: $pkg"
-                    INSTALLED_PACKAGES+=("$pkg")
-                    continue
-                fi
-            fi
-            log_fail "Could not install $pkg. You might have to do it yourself."
-            FAILED_PACKAGES+=("$pkg")
-        fi
-    done
-}
-
-phase_execute_backup() {
-    log_step "Backing Up Your Old Junk"
-    if $DRY_RUN; then log_info "Dry Run: Not touching your files."; return; fi
-
-    local modules
-    mapfile -t modules < <(get_discovered_modules)
-    local verified_backups=()
-
-    local mod
-    for mod in "${modules[@]}"; do
-        if [ -e "$HOME/.config/$mod" ]; then
-            verified_backups+=("config/$mod")
-        fi
-    done
-
-    if [ -d "local" ] && [ -e "$HOME/.local" ]; then
-        verified_backups+=("local")
-    fi
-
-    if [ -d "Pictures" ] && [ -e "$HOME/Pictures" ]; then
-        verified_backups+=("Pictures")
-    fi
-
-    if [ ${#verified_backups[@]} -eq 0 ]; then
-        log_info "No old configs or assets found to backup. Nothing to do here."
-        return
-    fi
-
-    if ! mkdir -p "$BACKUP_DIR" 2>>"$LOG_FILE"; then
-        log_fail "Failed to create the backup folder. That's not great."
-        exit 1
-    fi
-
-    local target
-    for target in "${verified_backups[@]}"; do
-        if [[ "$target" == config/* ]]; then
-            local folder="${target#config/}"
-            mkdir -p "$BACKUP_DIR/.config"
-            if cp -a "$HOME/.config/$folder" "$BACKUP_DIR/.config/" 2>>"$LOG_FILE"; then
-                log_success "Stashed your old ~/.config/$folder away safely."
-            else
-                log_fail "Failed to backup config/$folder. Watch out."
-            fi
-        elif [ "$target" == "local" ]; then
-            if cp -a "$HOME/.local" "$BACKUP_DIR/.local" 2>>"$LOG_FILE"; then
-                log_success "Stashed your old ~/.local away safely."
-            else
-                log_fail "Failed to backup ~/.local."
-            fi
-        elif [ "$target" == "Pictures" ]; then
-            if cp -a "$HOME/Pictures" "$BACKUP_DIR/Pictures" 2>>"$LOG_FILE"; then
-                log_success "Stashed your old ~/Pictures away safely."
-            else
-                log_fail "Failed to backup ~/Pictures."
-            fi
-        fi
-    done
-}
-
-phase_deploy_configs() {
-    local interactive=$1
-    log_step "Deploying The Rice 🍚"
-    
-    local modules
-    mapfile -t modules < <(get_discovered_modules)
-    
-    if [ ! -d "$HOME/.config" ] && ! $DRY_RUN; then
-        mkdir -p "$HOME/.config" 2>>"$LOG_FILE"
-    fi
-
-    local mod
-    for mod in "${modules[@]}"; do
-        if [[ "$mod" == "hypr" ]] && ! command -v hyprland &>/dev/null; then
-            log_warn "Hyprland not detected on system. Skipping 'hypr' config."
-            SKIPPED_CONFIGS+=("hypr")
-            continue
-        fi
-
-        if [[ "$mod" == "niri" ]] && ! command -v niri &>/dev/null; then
-            log_warn "Niri not detected on system. Skipping 'niri' config."
-            SKIPPED_CONFIGS+=("niri")
-            continue
-        fi
-
-        local action=true
-        if $interactive; then
-            read -rp "  Install configs for [${mod}]? [Y/n]: " choice
-            choice=${choice:-Y}
-            [[ ! "$choice" =~ ^[Yy]$ ]] && action=false
-        fi
-
-        if $action; then
-            if $DRY_RUN; then
-                log_info "Dry Run: Would have installed: $mod"
-                INSTALLED_CONFIGS+=("$mod")
-            else
-                local tmp_dest="$HOME/.config/.$mod.tmp.$TIMESTAMP"
-                local final_dest="$HOME/.config/$mod"
-                
-                rm -rf "$tmp_dest"
-                if cp -r "configs/$mod" "$tmp_dest" 2>>"$LOG_FILE"; then
-                    # Keep live Noctalia preferences/plugin state across rice updates.
-                    if [[ "$mod" == "noctalia" && -d "$final_dest" ]]; then
-                        for state_file in settings.json plugins.json; do
-                            if [[ -f "$final_dest/$state_file" ]]; then
-                                cp -p "$final_dest/$state_file" "$tmp_dest/$state_file" 2>>"$LOG_FILE" || true
-                            fi
-                        done
-                    fi
-                    if [ -e "$final_dest" ]; then
-                        rm -rf "$final_dest" 2>>"$LOG_FILE"
-                    fi
-                    if mv "$tmp_dest" "$final_dest" 2>>"$LOG_FILE"; then
-                        log_success "Riced out: $mod"
-                        INSTALLED_CONFIGS+=("$mod")
-                    else
-                        log_fail "Failed moving config folder for: $mod"
-                        FAILED_CONFIGS+=("$mod")
-                    fi
-                else
-                    log_fail "Failed copying configs for: $mod"
-                    FAILED_CONFIGS+=("$mod")
-                    rm -rf "$tmp_dest"
-                fi
-            fi
-        else
-            log_warn "Skipped: $mod"
-            SKIPPED_CONFIGS+=("$mod")
-        fi
-    done
-
-    if [ -d "local" ]; then
-        log_info "Deploying local folder to ~/.local..."
-        if ! $DRY_RUN; then
-            mkdir -p "$HOME/.local" 2>>"$LOG_FILE"
-            if cp -a local/. "$HOME/.local/" 2>>"$LOG_FILE"; then
-                log_success "Copied local/ -> ~/.local/"
-            else
-                log_fail "Failed to copy local folder contents."
-            fi
-        else
-            log_info "Dry Run: Would copy local/ -> ~/.local/"
-        fi
-    fi
-
-    if [ -d "Pictures" ]; then
-        log_info "Deploying Pictures folder to ~/Pictures..."
-        if ! $DRY_RUN; then
-            mkdir -p "$HOME/Pictures" 2>>"$LOG_FILE"
-            if cp -a Pictures/. "$HOME/Pictures/" 2>>"$LOG_FILE"; then
-                log_success "Copied Pictures/ -> ~/Pictures/"
-            else
-                log_fail "Failed to copy Pictures folder contents."
-            fi
-        else
-            log_info "Dry Run: Would copy Pictures/ -> ~/Pictures/"
-        fi
-    fi
-    
-    # Install the Bash login profile as well as the Zsh profile so TTY
-    # auto-start works regardless of which login shell is selected.
-    if [ -f "home/.bash_profile" ]; then
-        if ! $DRY_RUN; then
-            cp -f "home/.bash_profile" "$HOME/.bash_profile"
-            log_success "Applied automatic Niri startup to ~/.bash_profile"
-        else
-            log_info "Dry Run: Would apply home/.bash_profile"
-        fi
-    fi
-
-    if [ -d "assets/gtk" ]; then
-        log_info "Applying Bibata cursor settings to GTK..."
-        if ! $DRY_RUN; then
-            for gtk_version in 3.0 4.0; do
-                local gtk_settings="assets/gtk/gtk-${gtk_version}/settings.ini"
-                if [ -f "$gtk_settings" ]; then
-                    mkdir -p "$HOME/.config/gtk-${gtk_version}"
-                    cp -f "$gtk_settings" "$HOME/.config/gtk-${gtk_version}/settings.ini"
-                fi
-            done
-            log_success "GTK cursor settings applied."
-        else
-            log_info "Dry Run: Would apply GTK cursor settings."
-        fi
-    fi
-}
-
-# ==============================================================================
-# 5. The Shell Makeover
-# ==============================================================================
-
-phase_install_shell_config() {
-    log_step "Terminal Makeover Time"
-    
-    echo -e "  ${BOLD}Pick your poison for the shell:${NC}"
-    echo -e "  ${GREEN}[1]${NC} Zsh + Powerlevel10k (The Classic)"
-    echo -e "  ${GREEN}[2]${NC} Fish + Starship (The Modern)"
-    echo -e "───────────────────────────────────────────────────────────────────${NC}"
-    read -rp "Selection [1-2]: " shell_choice
-
-    if $DRY_RUN; then
-        log_info "Dry Run: Not messing with your shell configs today."
-        return
-    fi
-
-    local helper
-    helper=$(get_system_aur_helper)
-
-    if [[ "$shell_choice" == "1" ]]; then
-        log_info "Setting up Zsh..."
-        local zsh_deps=("zsh" "git" "curl")
-        local dep
-        for dep in "${zsh_deps[@]}"; do
-            if ! command -v "$dep" &>/dev/null; then
-                log_info "Installing missing thing: $dep"
-                sudo pacman -S --needed --noconfirm "$dep" 2>>"$LOG_FILE" || "$helper" -S --needed --noconfirm "$dep" 2>>"$LOG_FILE"
-            fi
-        done
-
-        if [ ! -d "$HOME/.oh-my-zsh" ]; then
-            log_info "Grabbing Oh My Zsh..."
-            if ! $HAS_INTERNET; then log_fail "No internet. Can't download OMZ."; exit 1; fi
-            curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh > "$LOG_DIR/omz-install.sh"
-            sh "$LOG_DIR/omz-install.sh" --unattended --keep-zshrc >>"$LOG_FILE" 2>&1
-        fi
-
-        local p10k_dest="$HOME/.oh-my-zsh/custom/themes/powerlevel10k"
-        if [ ! -d "$p10k_dest" ]; then
-            log_info "Cloning Powerlevel10k..."
-            git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$p10k_dest" >>"$LOG_FILE" 2>&1
-        fi
-
-        local plugins=("zsh-autosuggestions" "zsh-syntax-highlighting")
-        declare -A urls=(
-            ["zsh-autosuggestions"]="https://github.com/zsh-users/zsh-autosuggestions"
-            ["zsh-syntax-highlighting"]="https://github.com/zsh-users/zsh-syntax-highlighting"
-        )
-        for pl in "${plugins[@]}"; do
-            if [ ! -d "$HOME/.oh-my-zsh/custom/plugins/$pl" ]; then
-                log_info "Cloning plugin: $pl"
-                git clone --depth=1 "${urls[$pl]}" "$HOME/.oh-my-zsh/custom/plugins/$pl" >>"$LOG_FILE" 2>&1
-            fi
-        done
-
-        local f
-        for f in ".zshrc" ".zprofile" ".p10k.zsh"; do
-            if [ -f "$HOME/$f" ]; then mv "$HOME/$f" "$HOME/$f.backup" 2>>"$LOG_FILE"; fi
-            if [ -f "home/$f" ]; then 
-                cp -f "home/$f" "$HOME/$f"
-                log_success "Applied: ~/$f"
-            fi
-        done
-
-        local target_shell
-        target_shell=$(command -v zsh 2>/dev/null || echo "/usr/bin/zsh")
-        log_info "Changing default shell to Zsh..."
-        sudo chsh -s "$target_shell" "$USER" </dev/null >>"$LOG_FILE" 2>&1 || true
-
-    elif [[ "$shell_choice" == "2" ]]; then
-        log_info "Setting up Fish + Starship..."
-        local fish_deps=("fish" "starship")
-        local dep
-        for dep in "${fish_deps[@]}"; do
-            if ! command -v "$dep" &>/dev/null; then
-                log_info "Installing missing thing: $dep"
-                sudo pacman -S --needed --noconfirm "$dep" 2>>"$LOG_FILE" || "$helper" -S --needed --noconfirm "$dep" 2>>"$LOG_FILE"
-            fi
-        done
-
-        if [ -d "configs/fish" ]; then
-            log_info "Dropping in the Fish configs..."
-            rm -rf "$HOME/.config/fish"
-            cp -r configs/fish "$HOME/.config/" 2>>"$LOG_FILE"
-            log_success "Fish is ready."
-        fi
-
-        if [ -f "configs/starship.toml" ]; then
-            log_info "Setting up Starship prompt..."
-            cp -f configs/starship.toml "$HOME/.config/starship.toml" 2>>"$LOG_FILE"
-            log_success "Starship is ready."
-        fi
-
-        local target_shell
-        target_shell=$(command -v fish 2>/dev/null || echo "/usr/bin/fish")
-        log_info "Changing default shell to Fish..."
-        sudo chsh -s "$target_shell" "$USER" </dev/null >>"$LOG_FILE" 2>&1 || true
-    else
-        log_fail "That wasn't one of the options..."
-        exit 1
-    fi
-
-    log_success "Shell setup is officially done."
-}
-
-phase_install_riff() {
-    log_step "Installing Riff Music Player"
-    local riff_path="$HOME/.local/bin/riff"
-    local desktop_file="$HOME/.local/share/applications/riff.desktop"
-
-    if $DRY_RUN; then
-        log_info "Dry Run: Would download the latest official Riff Linux x86_64 AppImage."
-        return
-    fi
-
-    if [[ ! -x "$riff_path" ]]; then
-        if ! $HAS_INTERNET; then
-            log_warn "No internet. Skipping Riff AppImage download."
-            FAILED_PACKAGES+=("Riff AppImage")
-            return
-        fi
-
-        if ! command -v curl >/dev/null 2>&1; then
-            if ! sudo pacman -S --needed --noconfirm curl 2>>"$LOG_FILE"; then
-                log_fail "Could not install curl, so Riff cannot be downloaded."
-                FAILED_PACKAGES+=("Riff AppImage")
-                return
-            fi
-        fi
-        if ! command -v python3 >/dev/null 2>&1; then
-            if ! sudo pacman -S --needed --noconfirm python 2>>"$LOG_FILE"; then
-                log_fail "Could not install Python, so the latest Riff release cannot be identified."
-                FAILED_PACKAGES+=("Riff AppImage")
-                return
-            fi
-        fi
-
-        # AppImages commonly need the FUSE 2 compatibility library on Arch.
-        if [[ ! -e /usr/lib/libfuse.so.2 ]]; then
-            if ! sudo pacman -S --needed --noconfirm fuse2 2>>"$LOG_FILE"; then
-                log_warn "Could not install fuse2. Riff may need --appimage-extract-and-run if FUSE is unavailable."
-            fi
-        fi
-
-        local release_json asset_url temp_appimage
-        release_json=$(mktemp)
-        temp_appimage=$(mktemp)
-
-        if ! curl -fsSL --retry 3 https://api.github.com/repos/rootscripts/riff/releases/latest -o "$release_json"; then
-            rm -f "$release_json" "$temp_appimage"
-            log_fail "Could not retrieve the latest Riff release metadata."
-            FAILED_PACKAGES+=("Riff AppImage")
-            return
-        fi
-
-        asset_url=$(python3 - "$release_json" <<'PY'
-import json, sys
-with open(sys.argv[1], encoding="utf-8") as f:
-    release = json.load(f)
-asset = next((a for a in release.get("assets", []) if a.get("name", "").endswith("-linux-x86_64.AppImage")), None)
-print(asset.get("browser_download_url", "") if asset else "")
-PY
-)
-        rm -f "$release_json"
-
-        if [[ -z "$asset_url" ]]; then
-            rm -f "$temp_appimage"
-            log_fail "The latest Riff release has no Linux x86_64 AppImage asset."
-            FAILED_PACKAGES+=("Riff AppImage")
-            return
-        fi
-
-        log_info "Downloading the latest official Riff AppImage..."
-        if ! curl -fL --retry 3 "$asset_url" -o "$temp_appimage" >>"$LOG_FILE" 2>&1 || [[ ! -s "$temp_appimage" ]]; then
-            rm -f "$temp_appimage"
-            log_fail "Riff AppImage download failed."
-            FAILED_PACKAGES+=("Riff AppImage")
-            return
-        fi
-
-        mkdir -p "$HOME/.local/bin"
-        if ! install -m 755 "$temp_appimage" "$riff_path" 2>>"$LOG_FILE"; then
-            rm -f "$temp_appimage"
-            log_fail "Could not install the Riff AppImage to ~/.local/bin."
-            FAILED_PACKAGES+=("Riff AppImage")
-            return
-        fi
-        rm -f "$temp_appimage"
-        INSTALLED_PACKAGES+=("Riff AppImage")
-        log_success "Downloaded the latest Riff AppImage."
-    else
-        ALREADY_PRESENT_PACKAGES+=("Riff AppImage")
-        log_success "Riff is already installed at $riff_path."
-    fi
-
-    mkdir -p "$HOME/.local/share/applications"
-    cat > "$desktop_file" <<EOF
-[Desktop Entry]
-Type=Application
-Name=Riff
-Comment=Music player for YouTube Music, YouTube, SoundCloud, and local files
-Exec=$riff_path %U
-Icon=audio-x-generic
-Terminal=false
-Categories=AudioVideo;Audio;Player;
-StartupNotify=true
-EOF
-    log_success "Riff launcher is ready in the application menu."
-}
-
-phase_setup_firewalls_and_noctalia() {
-    log_step "Setting Up FireWalls Wallpapers and Noctalia Preferences"
-    if $DRY_RUN; then
-        log_info "Dry Run: Skipping wallpaper download and live Noctalia changes."
-        return
-    fi
-
-    local wallpaper_repo="$HOME/Pictures/FireWalls"
-    local wallpaper_dir="$wallpaper_repo/Desktop/Wallpapers/Best-Collection"
-    mkdir -p "$HOME/Pictures"
-
-    if [[ -d "$wallpaper_repo/.git" ]]; then
-        git -C "$wallpaper_repo" pull --ff-only >>"$LOG_FILE" 2>&1 || log_warn "Could not update the existing FireWalls checkout."
-    elif [[ ! -e "$wallpaper_repo" ]]; then
-        if git clone --depth 1 --filter=blob:none --sparse https://github.com/deadduck-09/FireWalls.git "$wallpaper_repo" >>"$LOG_FILE" 2>&1; then
-            git -C "$wallpaper_repo" sparse-checkout set Desktop/Wallpapers/Best-Collection >>"$LOG_FILE" 2>&1 || log_warn "Could not select the desktop wallpaper folder."
-        else
-            log_warn "FireWalls could not be cloned; keeping your current wallpapers."
-        fi
-    else
-        log_warn "$wallpaper_repo already exists and is not a Git checkout; leaving it untouched."
-    fi
-
-    if [[ -f "$HOME/.config/noctalia/settings.json" ]] && command -v python3 >/dev/null 2>&1; then
-        python3 - "$HOME/.config/noctalia/settings.json" "$HOME/.config/noctalia/plugins.json" "$wallpaper_dir" <<'PY'
-import json, os, sys
-settings_path, plugins_path, wallpaper_dir = sys.argv[1:4]
-
-try:
-    with open(settings_path, encoding="utf-8") as f:
-        settings = json.load(f)
-except Exception:
-    settings = {}
-
-bar = settings.setdefault("bar", {})
-widgets = bar.setdefault("widgets", {})
-left = widgets.setdefault("left", [])
-center = widgets.setdefault("center", [])
-right = widgets.setdefault("right", [])
-
-control = next((w for w in left if w.get("id") == "ControlCenter"), None)
-if control is None:
-    control = {"id": "ControlCenter"}
-    left.insert(0, control)
-control["useDistroLogo"] = True
-control["colorizeDistroLogo"] = False
-
-clock = next((w for w in center if w.get("id") == "Clock"), None)
-if clock is None:
-    clock = {"id": "Clock"}
-    center.append(clock)
-clock["formatHorizontal"] = "hh:mm AP"
-clock["formatVertical"] = "hh mm AP"
-clock["tooltipFormat"] = "hh:mm AP ddd, MMM dd"
-
-general = settings.setdefault("general", {})
-general["clockFormat"] = "hh:mm AP"
-general["clockStyle"] = "custom"
-location = settings.setdefault("location", {})
-location["use12hourFormat"] = True
-
-# Restore the old Niri right-side widgets and add live hardware controls.
-# Existing widget objects are reused so their saved settings (including timer
-# duration or other plugin preferences) are not overwritten.
-right_defaults = [
-    {"id": "MediaMini"},
-    {"id": "plugin:usb-drive-manager", "defaultSettings": {
-        "autoMount": False, "fileBrowser": "nautilus", "hideWhenEmpty": False,
-        "iconColor": "none", "showBadge": False, "showNotifications": True,
-        "terminalCommand": "kitty"
-    }},
-    {"id": "plugin:noctalia-calculator", "defaultSettings": {
-        "precision": 8, "showBarValue": True
-    }},
-    {"id": "Bluetooth"},
-    {"id": "Network"},
-    {"id": "Volume"},
-    {"id": "Brightness"},
-    {"id": "Tray"},
-    {"id": "NotificationHistory"},
-    {"id": "Battery"},
-    {"id": "SessionMenu"}
-]
-existing_right = {w.get("id"): w for w in right if isinstance(w, dict)}
-ordered_right = []
-for default_widget in right_defaults:
-    widget_id = default_widget["id"]
-    ordered_right.append(existing_right.pop(widget_id, default_widget))
-# Keep any user-added widgets (including timer widgets) exactly as they were.
-ordered_right.extend(w for w in right if isinstance(w, dict) and w.get("id") in existing_right)
-right[:] = ordered_right
-
-for widget in right:
-    if widget.get("id") == "plugin:usb-drive-manager":
-        widget.setdefault("defaultSettings", {})["fileBrowser"] = "nautilus"
-
-wallpaper = settings.setdefault("wallpaper", {})
-if os.path.isdir(wallpaper_dir):
-    wallpaper["directory"] = wallpaper_dir.replace(os.path.expanduser("~"), "~", 1)
-    wallpaper["enabled"] = True
-    wallpaper["automationEnabled"] = True
-    wallpaper["wallpaperChangeMode"] = "random"
-    wallpaper.setdefault("randomIntervalSec", 3600)
-
-with open(settings_path, "w", encoding="utf-8") as f:
-    json.dump(settings, f, indent=2)
-    f.write("\n")
-
-try:
-    with open(plugins_path, encoding="utf-8") as f:
-        plugins = json.load(f)
-except Exception:
-    plugins = {
-        "sources": [{
-            "enabled": True,
-            "name": "Noctalia Plugins",
-            "url": "https://github.com/noctalia-dev/noctalia-plugins"
-        }],
-        "states": {},
-        "version": 2
-    }
-plugins.setdefault("states", {})["noctalia-calculator"] = {
-    "enabled": True,
-    "sourceUrl": "https://github.com/noctalia-dev/noctalia-plugins"
-}
-plugins.setdefault("sources", [{
-    "enabled": True,
-    "name": "Noctalia Plugins",
-    "url": "https://github.com/noctalia-dev/noctalia-plugins"
-}])
-plugins["version"] = 2
-with open(plugins_path, "w", encoding="utf-8") as f:
-    json.dump(plugins, f, indent=2)
-    f.write("\n")
-PY
-        log_success "Kept your Control Center and timer settings; enabled Arch logo, 12-hour clock, and calculator."
-    else
-        log_warn "No existing Noctalia settings.json found; start Noctalia once, then rerun this installer to apply the bar preferences."
-    fi
-
-    if [[ -d "$wallpaper_dir" ]]; then
-        log_success "FireWalls desktop wallpapers are available at $wallpaper_dir."
-    else
-        log_warn "FireWalls wallpapers are not available; your existing wallpaper directory remains unchanged."
-    fi
-}
-
-phase_signal_environments() {
-    log_step "Telling Apps to Refresh"
-    if $DRY_RUN; then log_info "Dry Run: Skipping live app reloads."; return; fi
-
-    if pgrep -x "kitty" &>/dev/null; then
-        killall -USR1 kitty 2>/dev/null && log_success "Told Kitty to reload." || true
-    fi
-    if pgrep -x "waybar" &>/dev/null; then
-        killall -SIGUSR2 waybar 2>/dev/null && log_success "Told Waybar to reload." || true
-    fi
-}
-
-phase_compile_summary() {
-    log_step "How'd We Do?"
-    local end_time
-    end_time=$(date +%s)
-    local elapsed=$((end_time - START_TIME))
-    
-    echo -e "  ${BOLD}✓ We installed:${NC}        ${GREEN}${INSTALLED_PACKAGES[*]:-Nothing}${NC}"
-    echo -e "  ${BOLD}✓ You already had:${NC}     ${CYAN}${ALREADY_PRESENT_PACKAGES[*]:-Nothing}${NC}"
-    echo -e "  ${BOLD}✓ Failed Installs:${NC}     ${RED}${FAILED_PACKAGES[*]:-None}${NC}"
-    echo -e "  ${BOLD}✓ Riced configs:${NC}       ${GREEN}${INSTALLED_CONFIGS[*]:-None}${NC}"
-    echo -e "  ${BOLD}✓ Skipped configs:${NC}     ${YELLOW}${SKIPPED_CONFIGS[*]:-None}${NC}"
-    echo -e "  ${BOLD}✓ Broken configs:${NC}      ${RED}${FAILED_CONFIGS[*]:-None}${NC}"
-    
-    if [ -d "$BACKUP_DIR" ]; then
-        echo -e "  ${BOLD}✓ Your old stuff is at:${NC} ${PURPLE}$BACKUP_DIR${NC}"
-    fi
-    echo -e "  ${BOLD}✓ Error logs are here:${NC}  ${BLUE}$LOG_FILE${NC}"
-    echo -e "  ${BOLD}✓ Time wasted:${NC}          ${YELLOW}$elapsed seconds${NC}"
-    echo -e "${BLUE}───────────────────────────────────────────────────────────────────${NC}"
-}
-
-# ==============================================================================
-# 6. Oh no, fix it (Backup/Restore)
-# ==============================================================================
-
-execute_restore_operation() {
-    TOTAL_STEPS=2
-    log_step "Emergency Rollback Mode"
-    
-    local backups=()
-    if [ -d "$HOME" ]; then
-        local dir
-        for dir in "$HOME"/.config-backup-*; do
-            if [ -d "$dir" ]; then
-                backups+=("$dir")
-            fi
-        done
-    fi
-
-    if [ ${#backups[@]} -eq 0 ]; then
-        log_fail "Uh oh. I didn't find any backups."
-        return
-    fi
-
-    echo -e "\n  ${BOLD}Here's what you can restore:${NC}"
-    local i
-    for i in "${!backups[@]}"; do
-        echo -e "  ${GREEN}[$((i+1))]${NC} $(basename "${backups[$i]}")"
-    done
-    echo -e "  ${RED}[c]${NC} Changed my mind, cancel."
-    echo -e "${BLUE}───────────────────────────────────────────────────────────────────${NC}"
-    
-    read -rp "Which backup do you want back? " choice
-    if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -le "${#backups[@]}" ] && [ "$choice" -gt 0 ]; then
-        local target_dir="${backups[$((choice - 1))]}"
-        log_info "Putting everything back from: $target_dir"
-        
-        if [ -d "$target_dir/.config" ]; then
-            mkdir -p "$HOME/.config"
-            cp -a "$target_dir/.config/." "$HOME/.config/" 2>>"$LOG_FILE"
-            log_success "Restored ~/.config items."
-        fi
-
-        if [ -d "$target_dir/.local" ]; then
-            cp -a "$target_dir/.local/." "$HOME/.local/" 2>>"$LOG_FILE"
-            log_success "Restored ~/.local items."
-        fi
-
-        if [ -d "$target_dir/Pictures" ]; then
-            cp -a "$target_dir/Pictures/." "$HOME/Pictures/" 2>>"$LOG_FILE"
-            log_success "Restored ~/Pictures items."
-        fi
-
-        log_success "Rollback finished. Hopefully things work again."
-    else
-        log_info "Aborting. Leaving things as they are."
-    fi
-}
-
-# ==============================================================================
-# 7. The main brain
-# ==============================================================================
-
-run_orchestrated_installer() {
-    local interactive=$1
-    phase_validate_env
-    phase_setup_desktop_support
-    phase_build_noctalia
-    phase_system_refresh
-    phase_setup_audio_bluetooth
-    phase_inspect_dependencies
-    phase_resolve_dependencies
-    phase_install_riff
-    phase_execute_backup
-    phase_deploy_configs "$interactive"
-    phase_setup_firewalls_and_noctalia
-    phase_install_shell_config
-    phase_signal_environments
-    phase_compile_summary
-    
-    echo -e "\n${GREEN}═══════════════════════════════════════════════════════════════════${NC}"
-    echo -e "${GREEN}${BOLD}                    All Done! The Rice is Served.                    ${NC}"
-    echo -e "${GREEN}                                                                    ${NC}"
-    echo -e "${GREEN}          Log out and log back in to see the magic happen.          ${NC}"
-    echo -e "${GREEN}                      Enjoy Noctara-Dots 🌿                         ${NC}"
-    echo -e "${GREEN}═══════════════════════════════════════════════════════════════════${NC}\n"
-}
-
-main() {
-    verify_environment
-    probe_network
-    print_banner
-
-    echo -e "  ${BOLD}What are we doing today?${NC}"
-    echo -e "  ${GREEN}[1]${NC} Just do it (Full Auto-Install)"
-    echo -e "  ${GREEN}[2]${NC} Let me pick and choose (Interactive Mode)"
-    echo -e "  ${YELLOW}[3]${NC} Go back! (Restore Backup)"
-    echo -e "  ${CYAN}[4]${NC} Show me what you'd do (Dry Run)"
-    echo -e "  ${RED}[5]${NC} Get me out of here (Exit)"
-    echo -e "───────────────────────────────────────────────────────────────────${NC}"
-    read -rp "Selection: " menu_choice
-
-    case "$menu_choice" in
-        1)
-            DRY_RUN=false
-            run_orchestrated_installer false
-            ;;
-        2)
-            DRY_RUN=false
-            run_orchestrated_installer true
-            ;;
-        3)
-            execute_restore_operation
-            ;;
-        4)
-            DRY_RUN=true
-            log_warn "Dry run active. Look, don't touch. We won't actually break anything."
-            run_orchestrated_installer false
-            ;;
-        5)
-            echo -e "\nPeace out! 🌿"
-            exit 0
-            ;;
-        *)
-            log_fail "I Don't Know What You Did. Quitting."
-            exit 1
-            ;;
-    esac
-}
-
-main
-\n\t'
-PATH="$HOME/.local/bin:$PATH"
+IFS=$'\n\t'
 
 # --- Stopwatch start ---
 START_TIME=$(date +%s)
@@ -1772,18 +492,6 @@ phase_inspect_dependencies() {
             log_warn "Missing: $mod (Needs package: $target_pkg)"
         fi
     done
-
-    local app
-    for app in "${DEFAULT_APP_ORDER[@]}"; do
-        local check_cmd="${DEFAULT_APP_BINARY_MAP[$app]}"
-        local target_pkg="${DEFAULT_APP_PACKAGE_MAP[$app]}"
-        if command -v "$check_cmd" &>/dev/null; then
-            log_success "Found app: $app"
-            ALREADY_PRESENT_PACKAGES+=("$target_pkg")
-        else
-            log_warn "Missing app: $app (Needs package: $target_pkg)"
-        fi
-    done
 }
 
 phase_resolve_dependencies() {
@@ -2149,150 +857,152 @@ phase_install_shell_config() {
     log_success "Shell setup is officially done."
 }
 
-phase_setup_firewalls_and_noctalia() {
-    log_step "Setting Up FireWalls Wallpapers and Noctalia Preferences"
+phase_install_riff() {
+    log_step "Installing Riff Music Player"
+    local riff_path="$HOME/.local/bin/riff"
+    local desktop_file="$HOME/.local/share/applications/riff.desktop"
+
     if $DRY_RUN; then
-        log_info "Dry Run: Skipping wallpaper download and live Noctalia changes."
+        log_info "Dry Run: Would download the latest official Riff Linux x86_64 AppImage."
         return
     fi
 
-    local wallpaper_repo="$HOME/Pictures/FireWalls"
-    local wallpaper_dir="$wallpaper_repo/Desktop/Wallpapers/Best-Collection"
-    mkdir -p "$HOME/Pictures"
-
-    if [[ -d "$wallpaper_repo/.git" ]]; then
-        git -C "$wallpaper_repo" pull --ff-only >>"$LOG_FILE" 2>&1 || log_warn "Could not update the existing FireWalls checkout."
-    elif [[ ! -e "$wallpaper_repo" ]]; then
-        if git clone --depth 1 --filter=blob:none --sparse https://github.com/deadduck-09/FireWalls.git "$wallpaper_repo" >>"$LOG_FILE" 2>&1; then
-            git -C "$wallpaper_repo" sparse-checkout set Desktop/Wallpapers/Best-Collection >>"$LOG_FILE" 2>&1 || log_warn "Could not select the desktop wallpaper folder."
-        else
-            log_warn "FireWalls could not be cloned; keeping your current wallpapers."
+    if [[ ! -x "$riff_path" ]]; then
+        if ! $HAS_INTERNET; then
+            log_warn "No internet. Skipping Riff AppImage download."
+            FAILED_PACKAGES+=("Riff AppImage")
+            return
         fi
+
+        if ! command -v curl >/dev/null 2>&1; then
+            if ! sudo pacman -S --needed --noconfirm curl 2>>"$LOG_FILE"; then
+                log_fail "Could not install curl, so Riff cannot be downloaded."
+                FAILED_PACKAGES+=("Riff AppImage")
+                return
+            fi
+        fi
+        if ! command -v python3 >/dev/null 2>&1; then
+            if ! sudo pacman -S --needed --noconfirm python 2>>"$LOG_FILE"; then
+                log_fail "Could not install Python, so the latest Riff release cannot be identified."
+                FAILED_PACKAGES+=("Riff AppImage")
+                return
+            fi
+        fi
+
+        # AppImages commonly need the FUSE 2 compatibility library on Arch.
+        if [[ ! -e /usr/lib/libfuse.so.2 ]]; then
+            if ! sudo pacman -S --needed --noconfirm fuse2 2>>"$LOG_FILE"; then
+                log_warn "Could not install fuse2. Riff may need --appimage-extract-and-run if FUSE is unavailable."
+            fi
+        fi
+
+        local release_json asset_url temp_appimage
+        release_json=$(mktemp)
+        temp_appimage=$(mktemp)
+
+        if ! curl -fsSL --retry 3 https://api.github.com/repos/rootscripts/riff/releases/latest -o "$release_json"; then
+            rm -f "$release_json" "$temp_appimage"
+            log_fail "Could not retrieve the latest Riff release metadata."
+            FAILED_PACKAGES+=("Riff AppImage")
+            return
+        fi
+
+        asset_url=$(python3 - "$release_json" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as f:
+    release = json.load(f)
+asset = next((a for a in release.get("assets", []) if a.get("name", "").endswith("-linux-x86_64.AppImage")), None)
+print(asset.get("browser_download_url", "") if asset else "")
+PY
+)
+        rm -f "$release_json"
+
+        if [[ -z "$asset_url" ]]; then
+            rm -f "$temp_appimage"
+            log_fail "The latest Riff release has no Linux x86_64 AppImage asset."
+            FAILED_PACKAGES+=("Riff AppImage")
+            return
+        fi
+
+        log_info "Downloading the latest official Riff AppImage..."
+        if ! curl -fL --retry 3 "$asset_url" -o "$temp_appimage" >>"$LOG_FILE" 2>&1 || [[ ! -s "$temp_appimage" ]]; then
+            rm -f "$temp_appimage"
+            log_fail "Riff AppImage download failed."
+            FAILED_PACKAGES+=("Riff AppImage")
+            return
+        fi
+
+        mkdir -p "$HOME/.local/bin"
+        if ! install -m 755 "$temp_appimage" "$riff_path" 2>>"$LOG_FILE"; then
+            rm -f "$temp_appimage"
+            log_fail "Could not install the Riff AppImage to ~/.local/bin."
+            FAILED_PACKAGES+=("Riff AppImage")
+            return
+        fi
+        rm -f "$temp_appimage"
+        INSTALLED_PACKAGES+=("Riff AppImage")
+        log_success "Downloaded the latest Riff AppImage."
     else
-        log_warn "$wallpaper_repo already exists and is not a Git checkout; leaving it untouched."
+        ALREADY_PRESENT_PACKAGES+=("Riff AppImage")
+        log_success "Riff is already installed at $riff_path."
     fi
 
+    mkdir -p "$HOME/.local/share/applications"
+    cat > "$desktop_file" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Riff
+Comment=Music player for YouTube Music, YouTube, SoundCloud, and local files
+Exec=$riff_path %U
+Icon=audio-x-generic
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+StartupNotify=true
+EOF
+    log_success "Riff launcher is ready in the application menu."
+}
+
+phase_setup_firewalls_and_noctalia() {
+    log_step "Applying Noctalia Preferences"
+    if $DRY_RUN; then log_info "Dry Run: Skipping live Noctalia preference changes."; return; fi
     if [[ -f "$HOME/.config/noctalia/settings.json" ]] && command -v python3 >/dev/null 2>&1; then
-        python3 - "$HOME/.config/noctalia/settings.json" "$HOME/.config/noctalia/plugins.json" "$wallpaper_dir" <<'PY'
-import json, os, sys
-settings_path, plugins_path, wallpaper_dir = sys.argv[1:4]
-
+        python3 - "$HOME/.config/noctalia/settings.json" "$HOME/.config/noctalia/plugins.json" <<'PY'
+import json, sys
+settings_path, plugins_path = sys.argv[1:3]
 try:
-    with open(settings_path, encoding="utf-8") as f:
-        settings = json.load(f)
-except Exception:
-    settings = {}
-
+    with open(settings_path, encoding="utf-8") as f: settings = json.load(f)
+except Exception: settings = {}
 bar = settings.setdefault("bar", {})
 widgets = bar.setdefault("widgets", {})
-left = widgets.setdefault("left", [])
-center = widgets.setdefault("center", [])
-right = widgets.setdefault("right", [])
-
+left, center, right = (widgets.setdefault(k, []) for k in ("left", "center", "right"))
 control = next((w for w in left if w.get("id") == "ControlCenter"), None)
 if control is None:
-    control = {"id": "ControlCenter"}
-    left.insert(0, control)
-control["useDistroLogo"] = True
-control["colorizeDistroLogo"] = False
-
+    control = {"id": "ControlCenter"}; left.insert(0, control)
+control["useDistroLogo"] = True; control["colorizeDistroLogo"] = False
 clock = next((w for w in center if w.get("id") == "Clock"), None)
 if clock is None:
-    clock = {"id": "Clock"}
-    center.append(clock)
-clock["formatHorizontal"] = "hh:mm AP"
-clock["formatVertical"] = "hh mm AP"
-clock["tooltipFormat"] = "hh:mm AP ddd, MMM dd"
-
-general = settings.setdefault("general", {})
-general["clockFormat"] = "hh:mm AP"
-general["clockStyle"] = "custom"
-location = settings.setdefault("location", {})
-location["use12hourFormat"] = True
-
-# Restore the old Niri right-side widgets and add live hardware controls.
-# Existing widget objects are reused so their saved settings (including timer
-# duration or other plugin preferences) are not overwritten.
-right_defaults = [
-    {"id": "MediaMini"},
-    {"id": "plugin:usb-drive-manager", "defaultSettings": {
-        "autoMount": False, "fileBrowser": "nautilus", "hideWhenEmpty": False,
-        "iconColor": "none", "showBadge": False, "showNotifications": True,
-        "terminalCommand": "kitty"
-    }},
-    {"id": "plugin:noctalia-calculator", "defaultSettings": {
-        "precision": 8, "showBarValue": True
-    }},
-    {"id": "Bluetooth"},
-    {"id": "Network"},
-    {"id": "Volume"},
-    {"id": "Brightness"},
-    {"id": "Tray"},
-    {"id": "NotificationHistory"},
-    {"id": "Battery"},
-    {"id": "SessionMenu"}
-]
-existing_right = {w.get("id"): w for w in right if isinstance(w, dict)}
-ordered_right = []
-for default_widget in right_defaults:
-    widget_id = default_widget["id"]
-    ordered_right.append(existing_right.pop(widget_id, default_widget))
-# Keep any user-added widgets (including timer widgets) exactly as they were.
-ordered_right.extend(w for w in right if isinstance(w, dict) and w.get("id") in existing_right)
-right[:] = ordered_right
-
-for widget in right:
-    if widget.get("id") == "plugin:usb-drive-manager":
-        widget.setdefault("defaultSettings", {})["fileBrowser"] = "nautilus"
-
-wallpaper = settings.setdefault("wallpaper", {})
-if os.path.isdir(wallpaper_dir):
-    wallpaper["directory"] = wallpaper_dir.replace(os.path.expanduser("~"), "~", 1)
-    wallpaper["enabled"] = True
-    wallpaper["automationEnabled"] = True
-    wallpaper["wallpaperChangeMode"] = "random"
-    wallpaper.setdefault("randomIntervalSec", 3600)
-
-with open(settings_path, "w", encoding="utf-8") as f:
-    json.dump(settings, f, indent=2)
-    f.write("\n")
-
+    clock = {"id": "Clock"}; center.append(clock)
+clock.update({"formatHorizontal":"hh:mm AP","formatVertical":"hh mm AP","tooltipFormat":"hh:mm AP ddd, MMM dd"})
+settings.setdefault("general", {}).update({"clockFormat":"hh:mm AP","clockStyle":"custom"})
+settings.setdefault("location", {})["use12hourFormat"] = True
+if not any(w.get("id") == "plugin:noctalia-calculator" for w in right):
+    right.append({"id":"plugin:noctalia-calculator","defaultSettings":{"precision":8,"showBarValue":True}})
+for w in right:
+    if w.get("id") == "plugin:usb-drive-manager": w.setdefault("defaultSettings", {})["fileBrowser"] = "nautilus"
+with open(settings_path,"w",encoding="utf-8") as f: json.dump(settings,f,indent=2); f.write("\\n")
 try:
-    with open(plugins_path, encoding="utf-8") as f:
-        plugins = json.load(f)
-except Exception:
-    plugins = {
-        "sources": [{
-            "enabled": True,
-            "name": "Noctalia Plugins",
-            "url": "https://github.com/noctalia-dev/noctalia-plugins"
-        }],
-        "states": {},
-        "version": 2
-    }
-plugins.setdefault("states", {})["noctalia-calculator"] = {
-    "enabled": True,
-    "sourceUrl": "https://github.com/noctalia-dev/noctalia-plugins"
-}
-plugins.setdefault("sources", [{
-    "enabled": True,
-    "name": "Noctalia Plugins",
-    "url": "https://github.com/noctalia-dev/noctalia-plugins"
-}])
-plugins["version"] = 2
-with open(plugins_path, "w", encoding="utf-8") as f:
-    json.dump(plugins, f, indent=2)
-    f.write("\n")
+    with open(plugins_path,encoding="utf-8") as f: plugins=json.load(f)
+except Exception: plugins={"sources":[],"states":{},"version":2}
+plugins.setdefault("sources",[])
+source={"enabled":True,"name":"Noctalia Plugins","url":"https://github.com/noctalia-dev/noctalia-plugins"}
+if not any(x.get("url")==source["url"] for x in plugins["sources"]): plugins["sources"].append(source)
+plugins.setdefault("states",{})["noctalia-calculator"]={"enabled":True,"sourceUrl":source["url"]}
+plugins["version"]=2
+with open(plugins_path,"w",encoding="utf-8") as f: json.dump(plugins,f,indent=2); f.write("\\n")
 PY
-        log_success "Kept your Control Center and timer settings; enabled Arch logo, 12-hour clock, and calculator."
+        log_success "Noctalia preferences applied; calculator plugin enabled."
     else
-        log_warn "No existing Noctalia settings.json found; start Noctalia once, then rerun this installer to apply the bar preferences."
-    fi
-
-    if [[ -d "$wallpaper_dir" ]]; then
-        log_success "FireWalls desktop wallpapers are available at $wallpaper_dir."
-    else
-        log_warn "FireWalls wallpapers are not available; your existing wallpaper directory remains unchanged."
+        log_warn "No existing Noctalia settings.json found; start Noctalia once, then rerun this installer."
     fi
 }
 
@@ -2404,6 +1114,7 @@ run_orchestrated_installer() {
     phase_deploy_configs "$interactive"
     phase_setup_firewalls_and_noctalia
     phase_install_shell_config
+    phase_install_riff
     phase_signal_environments
     phase_compile_summary
     
