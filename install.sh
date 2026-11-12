@@ -42,7 +42,6 @@ readonly PREFERRED_ORDER=(
     "mpd"
     "mpv"
     "fastfetch"
-    "yazi"
     "rmpc"
 )
 
@@ -71,6 +70,44 @@ declare -A PACKAGE_MAP=(
     ["noctalia"]="noctalia-git"
     ["rmpc"]="rmpc"
     ["yazi"]="yazi"
+)
+
+# Everyday applications carried over from Jerbe-Dev/Niri.
+# Yazi is intentionally excluded: Nautilus is the chosen file manager.
+readonly DEFAULT_APP_ORDER=(
+    "cliphist" "playerctl" "brightnessctl" "nautilus" "brave"
+    "vscodium" "obsidian" "spotify" "spicetify" "polkit-gnome"
+    "pavucontrol" "python" "unzip"
+)
+declare -A DEFAULT_APP_BINARY_MAP=(
+    ["cliphist"]="cliphist"
+    ["playerctl"]="playerctl"
+    ["brightnessctl"]="brightnessctl"
+    ["nautilus"]="nautilus"
+    ["brave"]="brave"
+    ["vscodium"]="codium"
+    ["obsidian"]="obsidian"
+    ["spotify"]="spotify"
+    ["spicetify"]="spicetify"
+    ["polkit-gnome"]="polkit-gnome-authentication-agent-1"
+    ["pavucontrol"]="pavucontrol"
+    ["python"]="python"
+    ["unzip"]="unzip"
+)
+declare -A DEFAULT_APP_PACKAGE_MAP=(
+    ["cliphist"]="cliphist"
+    ["playerctl"]="playerctl"
+    ["brightnessctl"]="brightnessctl"
+    ["nautilus"]="nautilus"
+    ["brave"]="brave-bin"
+    ["vscodium"]="vscodium-bin"
+    ["obsidian"]="obsidian"
+    ["spotify"]="spotify"
+    ["spicetify"]="spicetify-cli"
+    ["polkit-gnome"]="polkit-gnome"
+    ["pavucontrol"]="pavucontrol"
+    ["python"]="python"
+    ["unzip"]="unzip"
 )
 
 # --- Keep track of what actually happened ---
@@ -204,6 +241,12 @@ get_discovered_modules() {
         for entry in configs/*; do
             if [ -d "$entry" ]; then
                 local base_entry="${entry##*/}"
+
+                # The user chose Nautilus; never deploy or install the old Yazi config.
+                if [[ "$base_entry" == "yazi" ]]; then
+                    continue
+                fi
+
                 local is_known=false
                 local known_item
                 for known_item in "${dynamic_modules[@]}"; do
@@ -475,6 +518,15 @@ phase_resolve_dependencies() {
         fi
     done
 
+    local app
+    for app in "${DEFAULT_APP_ORDER[@]}"; do
+        local check_cmd="${DEFAULT_APP_BINARY_MAP[$app]}"
+        local target_pkg="${DEFAULT_APP_PACKAGE_MAP[$app]}"
+        if ! command -v "$check_cmd" &>/dev/null; then
+            missing_pkgs+=("$target_pkg")
+        fi
+    done
+
     if [ ${#missing_pkgs[@]} -eq 0 ]; then
         log_success "You already have everything installed. Nice."
         return
@@ -614,6 +666,14 @@ phase_deploy_configs() {
                 
                 rm -rf "$tmp_dest"
                 if cp -r "configs/$mod" "$tmp_dest" 2>>"$LOG_FILE"; then
+                    # Keep live Noctalia preferences/plugin state across rice updates.
+                    if [[ "$mod" == "noctalia" && -d "$final_dest" ]]; then
+                        for state_file in settings.json plugins.json; do
+                            if [[ -f "$final_dest/$state_file" ]]; then
+                                cp -p "$final_dest/$state_file" "$tmp_dest/$state_file" 2>>"$LOG_FILE" || true
+                            fi
+                        done
+                    fi
                     if [ -e "$final_dest" ]; then
                         rm -rf "$final_dest" 2>>"$LOG_FILE"
                     fi
@@ -799,6 +859,125 @@ phase_install_shell_config() {
     log_success "Shell setup is officially done."
 }
 
+phase_setup_firewalls_and_noctalia() {
+    log_step "Setting Up FireWalls Wallpapers and Noctalia Preferences"
+
+    local wallpaper_repo="$HOME/Pictures/FireWalls"
+    local wallpaper_dir="$wallpaper_repo/Desktop/Wallpapers"
+    mkdir -p "$HOME/Pictures"
+
+    if [[ -d "$wallpaper_repo/.git" ]]; then
+        git -C "$wallpaper_repo" pull --ff-only >>"$LOG_FILE" 2>&1 || log_warn "Could not update the existing FireWalls checkout."
+    elif [[ ! -e "$wallpaper_repo" ]]; then
+        if git clone --depth 1 --filter=blob:none --sparse https://github.com/deadduck-09/FireWalls.git "$wallpaper_repo" >>"$LOG_FILE" 2>&1; then
+            git -C "$wallpaper_repo" sparse-checkout set Desktop/Wallpapers >>"$LOG_FILE" 2>&1 || log_warn "Could not select the desktop wallpaper folder."
+        else
+            log_warn "FireWalls could not be cloned; keeping your current wallpapers."
+        fi
+    else
+        log_warn "$wallpaper_repo already exists and is not a Git checkout; leaving it untouched."
+    fi
+
+    if [[ -f "$HOME/.config/noctalia/settings.json" ]] && command -v python3 >/dev/null 2>&1; then
+        python3 - "$HOME/.config/noctalia/settings.json" "$HOME/.config/noctalia/plugins.json" "$wallpaper_dir" <<'PY'
+import json, os, sys
+settings_path, plugins_path, wallpaper_dir = sys.argv[1:4]
+
+try:
+    with open(settings_path, encoding="utf-8") as f:
+        settings = json.load(f)
+except Exception:
+    settings = {}
+
+bar = settings.setdefault("bar", {})
+widgets = bar.setdefault("widgets", {})
+left = widgets.setdefault("left", [])
+center = widgets.setdefault("center", [])
+right = widgets.setdefault("right", [])
+
+control = next((w for w in left if w.get("id") == "ControlCenter"), None)
+if control is None:
+    control = {"id": "ControlCenter"}
+    left.insert(0, control)
+control["useDistroLogo"] = True
+control["colorizeDistroLogo"] = False
+
+clock = next((w for w in center if w.get("id") == "Clock"), None)
+if clock is None:
+    clock = {"id": "Clock"}
+    center.append(clock)
+clock["formatHorizontal"] = "hh:mm AP"
+clock["formatVertical"] = "hh mm AP"
+clock["tooltipFormat"] = "hh:mm AP ddd, MMM dd"
+
+general = settings.setdefault("general", {})
+general["clockFormat"] = "hh:mm AP"
+general["clockStyle"] = "custom"
+location = settings.setdefault("location", {})
+location["use12hourFormat"] = True
+
+calculator = next((w for w in right if w.get("id") == "plugin:noctalia-calculator"), None)
+if calculator is None:
+    right.append({
+        "id": "plugin:noctalia-calculator",
+        "defaultSettings": {"precision": 8, "showBarValue": True}
+    })
+
+for widget in right:
+    if widget.get("id") == "plugin:usb-drive-manager":
+        widget.setdefault("defaultSettings", {})["fileBrowser"] = "nautilus"
+
+wallpaper = settings.setdefault("wallpaper", {})
+if os.path.isdir(wallpaper_dir):
+    wallpaper["directory"] = wallpaper_dir.replace(os.path.expanduser("~"), "~", 1)
+    wallpaper["enabled"] = True
+    wallpaper["automationEnabled"] = True
+    wallpaper["wallpaperChangeMode"] = "random"
+    wallpaper.setdefault("randomIntervalSec", 3600)
+
+with open(settings_path, "w", encoding="utf-8") as f:
+    json.dump(settings, f, indent=2)
+    f.write("\\n")
+
+try:
+    with open(plugins_path, encoding="utf-8") as f:
+        plugins = json.load(f)
+except Exception:
+    plugins = {
+        "sources": [{
+            "enabled": True,
+            "name": "Noctalia Plugins",
+            "url": "https://github.com/noctalia-dev/noctalia-plugins"
+        }],
+        "states": {},
+        "version": 2
+    }
+plugins.setdefault("states", {})["noctalia-calculator"] = {
+    "enabled": True,
+    "sourceUrl": "https://github.com/noctalia-dev/noctalia-plugins"
+}
+plugins.setdefault("sources", [{
+    "enabled": True,
+    "name": "Noctalia Plugins",
+    "url": "https://github.com/noctalia-dev/noctalia-plugins"
+}])
+plugins["version"] = 2
+with open(plugins_path, "w", encoding="utf-8") as f:
+    json.dump(plugins, f, indent=2)
+    f.write("\\n")
+PY
+        log_success "Kept your Control Center and timer settings; enabled Arch logo, 12-hour clock, and calculator."
+    else
+        log_warn "No existing Noctalia settings.json found; start Noctalia once, then rerun this installer to apply the bar preferences."
+    fi
+
+    if [[ -d "$wallpaper_dir" ]]; then
+        log_success "FireWalls desktop wallpapers are available at $wallpaper_dir."
+    else
+        log_warn "FireWalls wallpapers are not available; your existing wallpaper directory remains unchanged."
+    fi
+}
+
 phase_signal_environments() {
     log_step "Telling Apps to Refresh"
     if $DRY_RUN; then log_info "Dry Run: Skipping live app reloads."; return; fi
@@ -905,6 +1084,7 @@ run_orchestrated_installer() {
     phase_resolve_dependencies
     phase_execute_backup
     phase_deploy_configs "$interactive"
+    phase_setup_firewalls_and_noctalia
     phase_install_shell_config
     phase_signal_environments
     phase_compile_summary
