@@ -306,15 +306,17 @@ phase_build_noctalia() {
     log_warn "Noctalia shell is missing. Time to bother the AUR..."
     if $DRY_RUN; then log_info "Dry Run: Skipping the Noctalia build."; return; fi
     if ! $HAS_INTERNET; then
-        log_fail "No internet? Can't build Noctalia then. Aborting."
-        exit 1
+        log_fail "No internet. Noctalia cannot be installed right now; continuing with the rest of the setup."
+        FAILED_PACKAGES+=("noctalia-git")
+        return
     fi
 
     local helper
     helper=$(get_system_aur_helper)
     if [ -z "$helper" ]; then
-        log_fail "Failed to find or install an AUR helper (yay/paru). Aborting."
-        exit 1
+        log_fail "No AUR helper is available. Skipping Noctalia for now and continuing."
+        FAILED_PACKAGES+=("noctalia-git")
+        return
     fi
 
     log_info "Telling $helper to go fetch noctalia-git..."
@@ -322,8 +324,8 @@ phase_build_noctalia() {
         log_success "Noctalia installed perfectly."
         INSTALLED_PACKAGES+=("noctalia-git")
     else
-        log_fail "The AUR hated that. Noctalia install failed."
-        exit 1
+        log_fail "Noctalia install failed. Continuing so the remaining desktop setup can finish."
+        FAILED_PACKAGES+=("noctalia-git")
     fi
 }
 
@@ -865,10 +867,10 @@ execute_restore_operation() {
 run_orchestrated_installer() {
     local interactive=$1
     phase_validate_env
+    phase_setup_desktop_support
     phase_build_noctalia
     phase_system_refresh
     phase_setup_audio_bluetooth
-    phase_setup_desktop_support
     phase_inspect_dependencies
     phase_resolve_dependencies
     phase_execute_backup
