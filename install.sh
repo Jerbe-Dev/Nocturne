@@ -645,7 +645,7 @@ phase_install_shell_config() {
         done
 
         local f
-        for f in ".zshrc" ".p10k.zsh"; do
+        for f in ".zshrc" ".zprofile" ".p10k.zsh"; do
             if [ -f "$HOME/$f" ]; then mv "$HOME/$f" "$HOME/$f.backup" 2>>"$LOG_FILE"; fi
             if [ -f "home/$f" ]; then 
                 cp -f "home/$f" "$HOME/$f"
