@@ -16,7 +16,8 @@ input {
       // You can control these using localectl set-x11-keymap.
     }
 
-    // NumLock is intentionally omitted so it stays OFF by default.
+    // Enable numlock on startup, omitting this setting disables it.
+    // numlock  -- disabled per user request
   }
 
   // Libinput settings.
