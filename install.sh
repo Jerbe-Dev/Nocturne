@@ -932,12 +932,36 @@ general["clockStyle"] = "custom"
 location = settings.setdefault("location", {})
 location["use12hourFormat"] = True
 
-calculator = next((w for w in right if w.get("id") == "plugin:noctalia-calculator"), None)
-if calculator is None:
-    right.append({
-        "id": "plugin:noctalia-calculator",
-        "defaultSettings": {"precision": 8, "showBarValue": True}
-    })
+# Restore the old Niri right-side widgets and add live hardware controls.
+# Existing widget objects are reused so their saved settings (including timer
+# duration or other plugin preferences) are not overwritten.
+right_defaults = [
+    {"id": "MediaMini"},
+    {"id": "plugin:usb-drive-manager", "defaultSettings": {
+        "autoMount": False, "fileBrowser": "nautilus", "hideWhenEmpty": False,
+        "iconColor": "none", "showBadge": False, "showNotifications": True,
+        "terminalCommand": "kitty"
+    }},
+    {"id": "plugin:noctalia-calculator", "defaultSettings": {
+        "precision": 8, "showBarValue": True
+    }},
+    {"id": "Bluetooth"},
+    {"id": "Network"},
+    {"id": "Volume"},
+    {"id": "Brightness"},
+    {"id": "Tray"},
+    {"id": "NotificationHistory"},
+    {"id": "Battery"},
+    {"id": "SessionMenu"}
+]
+existing_right = {w.get("id"): w for w in right if isinstance(w, dict)}
+ordered_right = []
+for default_widget in right_defaults:
+    widget_id = default_widget["id"]
+    ordered_right.append(existing_right.pop(widget_id, default_widget))
+# Keep any user-added widgets (including timer widgets) exactly as they were.
+ordered_right.extend(w for w in right if isinstance(w, dict) and w.get("id") in existing_right)
+right[:] = ordered_right
 
 for widget in right:
     if widget.get("id") == "plugin:usb-drive-manager":
