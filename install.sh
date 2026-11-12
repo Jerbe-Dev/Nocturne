@@ -518,6 +518,11 @@ phase_resolve_dependencies() {
 
     local app
     for app in "${DEFAULT_APP_ORDER[@]}"; do
+        # Riff is a standalone AppImage, not a pacman/AUR package.
+        # Its dedicated installer phase downloads and installs it.
+        if [[ "$app" == "riff" ]]; then
+            continue
+        fi
         local check_cmd="${DEFAULT_APP_BINARY_MAP[$app]}"
         local target_pkg="${DEFAULT_APP_PACKAGE_MAP[$app]}"
         if ! command -v "$check_cmd" &>/dev/null; then
