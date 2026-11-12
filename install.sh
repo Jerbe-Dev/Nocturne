@@ -374,11 +374,14 @@ phase_setup_desktop_support() {
         return
     fi
 
-    if ! sudo pacman -S --needed --noconfirm uwsm 2>>"$LOG_FILE"; then
-        log_warn "Could not install UWSM. Automatic TTY startup may not work until it is installed."
-        FAILED_PACKAGES+=("uwsm")
+    # Install full Unicode fonts for Qt/Noctalia UI. Monocraft is reserved
+    # for Kitty; it is not a suitable system-wide fallback font.
+    local font_packages=(noto-fonts noto-fonts-emoji)
+    if sudo pacman -S --needed --noconfirm uwsm "${font_packages[@]}" 2>>"$LOG_FILE"; then
+        log_success "UWSM and Noto fallback fonts are installed."
     else
-        log_success "UWSM is installed for automatic Niri startup."
+        log_warn "Could not install UWSM and/or Noto fallback fonts."
+        FAILED_PACKAGES+=("uwsm" "${font_packages[@]}")
     fi
 
     local helper
