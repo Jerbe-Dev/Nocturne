@@ -882,44 +882,47 @@ phase_install_riff() {
         return
     fi
 
-    if [[ -x "$riff_path" ]]; then
-        log_success "Riff is already installed at $riff_path."
-        return
-    fi
-
-    if ! $HAS_INTERNET; then
-        log_warn "No internet. Skipping Riff AppImage download."
-        FAILED_PACKAGES+=("Riff AppImage")
-        return
-    fi
-
-    if ! command -v curl >/dev/null 2>&1; then
-        if ! sudo pacman -S --needed --noconfirm curl 2>>"$LOG_FILE"; then
-            log_fail "Could not install curl, so Riff cannot be downloaded."
+    if [[ ! -x "$riff_path" ]]; then
+        if ! $HAS_INTERNET; then
+            log_warn "No internet. Skipping Riff AppImage download."
             FAILED_PACKAGES+=("Riff AppImage")
             return
         fi
-    fi
-    if ! command -v python3 >/dev/null 2>&1; then
-        if ! sudo pacman -S --needed --noconfirm python 2>>"$LOG_FILE"; then
-            log_fail "Could not install Python, so the latest Riff release cannot be identified."
+
+        if ! command -v curl >/dev/null 2>&1; then
+            if ! sudo pacman -S --needed --noconfirm curl 2>>"$LOG_FILE"; then
+                log_fail "Could not install curl, so Riff cannot be downloaded."
+                FAILED_PACKAGES+=("Riff AppImage")
+                return
+            fi
+        fi
+        if ! command -v python3 >/dev/null 2>&1; then
+            if ! sudo pacman -S --needed --noconfirm python 2>>"$LOG_FILE"; then
+                log_fail "Could not install Python, so the latest Riff release cannot be identified."
+                FAILED_PACKAGES+=("Riff AppImage")
+                return
+            fi
+        fi
+
+        # AppImages commonly need the FUSE 2 compatibility library on Arch.
+        if [[ ! -e /usr/lib/libfuse.so.2 ]]; then
+            if ! sudo pacman -S --needed --noconfirm fuse2 2>>"$LOG_FILE"; then
+                log_warn "Could not install fuse2. Riff may need --appimage-extract-and-run if FUSE is unavailable."
+            fi
+        fi
+
+        local release_json asset_url temp_appimage
+        release_json=$(mktemp)
+        temp_appimage=$(mktemp)
+
+        if ! curl -fsSL --retry 3 https://api.github.com/repos/rootscripts/riff/releases/latest -o "$release_json"; then
+            rm -f "$release_json" "$temp_appimage"
+            log_fail "Could not retrieve the latest Riff release metadata."
             FAILED_PACKAGES+=("Riff AppImage")
             return
         fi
-    fi
 
-    local release_json asset_url temp_appimage
-    release_json=$(mktemp)
-    temp_appimage=$(mktemp)
-
-    if ! curl -fsSL --retry 3 https://api.github.com/repos/rootscripts/riff/releases/latest -o "$release_json"; then
-        rm -f "$release_json" "$temp_appimage"
-        log_fail "Could not retrieve the latest Riff release metadata."
-        FAILED_PACKAGES+=("Riff AppImage")
-        return
-    fi
-
-    asset_url=$(python3 - "$release_json" <<'PY'
+        asset_url=$(python3 - "$release_json" <<'PY'
 import json, sys
 with open(sys.argv[1], encoding="utf-8") as f:
     release = json.load(f)
@@ -927,32 +930,39 @@ asset = next((a for a in release.get("assets", []) if a.get("name", "").endswith
 print(asset.get("browser_download_url", "") if asset else "")
 PY
 )
-    rm -f "$release_json"
+        rm -f "$release_json"
 
-    if [[ -z "$asset_url" ]]; then
+        if [[ -z "$asset_url" ]]; then
+            rm -f "$temp_appimage"
+            log_fail "The latest Riff release has no Linux x86_64 AppImage asset."
+            FAILED_PACKAGES+=("Riff AppImage")
+            return
+        fi
+
+        log_info "Downloading the latest official Riff AppImage..."
+        if ! curl -fL --retry 3 "$asset_url" -o "$temp_appimage" >>"$LOG_FILE" 2>&1 || [[ ! -s "$temp_appimage" ]]; then
+            rm -f "$temp_appimage"
+            log_fail "Riff AppImage download failed."
+            FAILED_PACKAGES+=("Riff AppImage")
+            return
+        fi
+
+        mkdir -p "$HOME/.local/bin"
+        if ! install -m 755 "$temp_appimage" "$riff_path" 2>>"$LOG_FILE"; then
+            rm -f "$temp_appimage"
+            log_fail "Could not install the Riff AppImage to ~/.local/bin."
+            FAILED_PACKAGES+=("Riff AppImage")
+            return
+        fi
         rm -f "$temp_appimage"
-        log_fail "The latest Riff release has no Linux x86_64 AppImage asset."
-        FAILED_PACKAGES+=("Riff AppImage")
-        return
+        INSTALLED_PACKAGES+=("Riff AppImage")
+        log_success "Downloaded the latest Riff AppImage."
+    else
+        ALREADY_PRESENT_PACKAGES+=("Riff AppImage")
+        log_success "Riff is already installed at $riff_path."
     fi
 
-    log_info "Downloading the latest official Riff AppImage..."
-    if ! curl -fL --retry 3 "$asset_url" -o "$temp_appimage" >>"$LOG_FILE" 2>&1 || [[ ! -s "$temp_appimage" ]]; then
-        rm -f "$temp_appimage"
-        log_fail "Riff AppImage download failed."
-        FAILED_PACKAGES+=("Riff AppImage")
-        return
-    fi
-
-    mkdir -p "$HOME/.local/bin" "$HOME/.local/share/applications"
-    if ! install -m 755 "$temp_appimage" "$riff_path" 2>>"$LOG_FILE"; then
-        rm -f "$temp_appimage"
-        log_fail "Could not install the Riff AppImage to ~/.local/bin."
-        FAILED_PACKAGES+=("Riff AppImage")
-        return
-    fi
-    rm -f "$temp_appimage"
-
+    mkdir -p "$HOME/.local/share/applications"
     cat > "$desktop_file" <<EOF
 [Desktop Entry]
 Type=Application
@@ -964,8 +974,7 @@ Terminal=false
 Categories=AudioVideo;Audio;Player;
 StartupNotify=true
 EOF
-
-    log_success "Riff installed and added to the application launcher."
+    log_success "Riff launcher is ready in the application menu."
 }
 
 phase_setup_firewalls_and_noctalia() {
