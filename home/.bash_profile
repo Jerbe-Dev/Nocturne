@@ -1,5 +1,6 @@
-# Force NumLock OFF on this TTY before starting the desktop.
+# Force NumLock OFF on the active virtual console and as its default.
 if [[ "$(tty 2>/dev/null)" =~ ^/dev/tty[0-9]+$ ]] && command -v setleds >/dev/null 2>&1; then
+    setleds -num >/dev/null 2>&1 || true
     setleds -D -num >/dev/null 2>&1 || true
 fi
 
