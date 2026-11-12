@@ -591,14 +591,8 @@ phase_install_shell_config() {
     echo -e "  ${BOLD}Pick your poison for the shell:${NC}"
     echo -e "  ${GREEN}[1]${NC} Zsh + Powerlevel10k (The Classic)"
     echo -e "  ${GREEN}[2]${NC} Fish + Starship (The Modern)"
-    echo -e "  ${YELLOW}[3]${NC} Nah, leave my shell alone"
     echo -e "───────────────────────────────────────────────────────────────────${NC}"
-    read -rp "Selection [1-3]: " shell_choice
-
-    if [[ "$shell_choice" == "3" ]]; then
-        log_info "Alright, keeping your shell exactly as it is."
-        return
-    fi
+    read -rp "Selection [1-2]: " shell_choice
 
     if $DRY_RUN; then
         log_info "Dry Run: Not messing with your shell configs today."
