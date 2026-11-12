@@ -244,22 +244,22 @@ install_aur_helper() {
     build_dir=$(mktemp -d)
     log_info "Cloning paru-bin into temporary directory..."
 
-    if git clone https://aur.archlinux.org/yay-bin.git "$build_dir" >>"$LOG_FILE" 2>&1; then
-        log_info "Building and installing yay..."
+    if git clone https://aur.archlinux.org/paru-bin.git "$build_dir" >>"$LOG_FILE" 2>&1; then
+        log_info "Installing paru..."
         
         if (cd "$build_dir" && makepkg -si --noconfirm) >>"$LOG_FILE" 2>&1; then
             rm -rf "$build_dir"
-            log_success "'yay' installed successfully!"
-            INSTALLED_PACKAGES+=("yay")
+            log_success "'paru' installed successfully!"
+            INSTALLED_PACKAGES+=("paru")
             return 0
         else
             rm -rf "$build_dir"
-            log_fail "Failed to build 'yay' from source."
+            log_fail "Failed to install 'paru' from the AUR."
             return 1
         fi
     else
         rm -rf "$build_dir"
-        log_fail "Failed to clone yay-bin repository from AUR."
+        log_fail "Failed to clone paru-bin repository from AUR."
         return 1
     fi
 }
@@ -271,7 +271,7 @@ get_system_aur_helper() {
         echo "yay"
     else
         if install_aur_helper; then
-            echo "yay"
+            echo "paru"
         else
             echo ""
         fi
