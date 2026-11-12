@@ -661,6 +661,17 @@ phase_deploy_configs() {
         fi
     fi
     
+    # Install the Bash login profile as well as the Zsh profile so TTY
+    # auto-start works regardless of which login shell is selected.
+    if [ -f "home/.bash_profile" ]; then
+        if [ -f "$HOME/.bash_profile" ] && ! $DRY_RUN; then
+            cp -f "home/.bash_profile" "$HOME/.bash_profile"
+            log_success "Applied automatic Niri startup to ~/.bash_profile"
+        elif $DRY_RUN; then
+            log_info "Dry Run: Would apply home/.bash_profile"
+        fi
+    fi
+
     if [ -d "assets/gtk" ]; then
         log_info "Applying Bibata cursor settings to GTK..."
         if ! $DRY_RUN; then
