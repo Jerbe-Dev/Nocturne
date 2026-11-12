@@ -112,7 +112,7 @@ declare -A DEFAULT_APP_PACKAGE_MAP=(
 
 # --- Keep track of what actually happened ---
 CURRENT_STEP=0
-TOTAL_STEPS=12
+TOTAL_STEPS=13
 
 INSTALLED_CONFIGS=()
 SKIPPED_CONFIGS=()
@@ -863,14 +863,14 @@ phase_setup_firewalls_and_noctalia() {
     log_step "Setting Up FireWalls Wallpapers and Noctalia Preferences"
 
     local wallpaper_repo="$HOME/Pictures/FireWalls"
-    local wallpaper_dir="$wallpaper_repo/Desktop/Wallpapers"
+    local wallpaper_dir="$wallpaper_repo/Desktop/Wallpapers/Best-Collection"
     mkdir -p "$HOME/Pictures"
 
     if [[ -d "$wallpaper_repo/.git" ]]; then
         git -C "$wallpaper_repo" pull --ff-only >>"$LOG_FILE" 2>&1 || log_warn "Could not update the existing FireWalls checkout."
     elif [[ ! -e "$wallpaper_repo" ]]; then
         if git clone --depth 1 --filter=blob:none --sparse https://github.com/deadduck-09/FireWalls.git "$wallpaper_repo" >>"$LOG_FILE" 2>&1; then
-            git -C "$wallpaper_repo" sparse-checkout set Desktop/Wallpapers >>"$LOG_FILE" 2>&1 || log_warn "Could not select the desktop wallpaper folder."
+            git -C "$wallpaper_repo" sparse-checkout set Desktop/Wallpapers/Best-Collection >>"$LOG_FILE" 2>&1 || log_warn "Could not select the desktop wallpaper folder."
         else
             log_warn "FireWalls could not be cloned; keeping your current wallpapers."
         fi
@@ -937,7 +937,7 @@ if os.path.isdir(wallpaper_dir):
 
 with open(settings_path, "w", encoding="utf-8") as f:
     json.dump(settings, f, indent=2)
-    f.write("\\n")
+    f.write("\n")
 
 try:
     with open(plugins_path, encoding="utf-8") as f:
@@ -964,7 +964,7 @@ plugins.setdefault("sources", [{
 plugins["version"] = 2
 with open(plugins_path, "w", encoding="utf-8") as f:
     json.dump(plugins, f, indent=2)
-    f.write("\\n")
+    f.write("\n")
 PY
         log_success "Kept your Control Center and timer settings; enabled Arch logo, 12-hour clock, and calculator."
     else
