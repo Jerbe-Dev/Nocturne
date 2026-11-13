@@ -402,33 +402,58 @@ phase_setup_audio_bluetooth() {
         log_warn "Could not enable PipeWire sockets globally; they may still start through package presets."
     fi
 
-    # ES8336 headphone DAC mixer switches can default to OFF on this laptop.
-    # Keep them enabled after every boot, not just during this installer run.
+    # Retry mixer setup until the ES8336 ALSA card is initialized.
     local audio_fix_unit="/etc/systemd/system/nocturne-audio-fix.service"
     if sudo tee "$audio_fix_unit" >/dev/null <<'UNIT'
 [Unit]
-Description=Enable ES8336 headphone DAC mixer switches
+Description=Enable ES8336 DAC mixer switches
 After=sound.target
 
 [Service]
 Type=oneshot
-ExecStartPre=/usr/bin/amixer -c 0 cset numid=65 on
-ExecStart=/usr/bin/amixer -c 0 cset numid=67 on
+ExecStart=/usr/bin/bash -lc 'for attempt in {1..30}; do if /usr/bin/amixer -c 0 cset numid=65 on && /usr/bin/amixer -c 0 cset numid=67 on; then exit 0; fi; /usr/bin/sleep 2; done; exit 1'
 
 [Install]
 WantedBy=multi-user.target
 UNIT
     then
         if sudo systemctl daemon-reload >>"$LOG_FILE" 2>&1 && sudo systemctl enable --now nocturne-audio-fix.service >>"$LOG_FILE" 2>&1; then
-            log_success "ES8336 headphone DAC switches enabled and configured to restore on every boot."
+            log_success "ES8336 DAC mixer switches will be restored after the sound card initializes."
         else
-            log_warn "Could not enable the persistent ES8336 audio fix service."
+            log_warn "Could not enable the persistent ES8336 mixer service."
         fi
     else
-        log_warn "Could not write the persistent ES8336 audio fix service."
+        log_warn "Could not write the persistent ES8336 mixer service."
     fi
 
-    log_info "PipeWire runs as a user service after login; no system-wide audio daemon is started."
+    # Select the internal Speaker profile once the user's PipeWire session is ready.
+    local audio_profile_dir="$HOME/.config/systemd/user"
+    local audio_profile_unit="$audio_profile_dir/nocturne-audio-profile.service"
+    mkdir -p "$audio_profile_dir"
+    if cat > "$audio_profile_unit" <<'UNIT'
+[Unit]
+Description=Select the built-in ES8336 speakers
+Wants=pipewire.service pipewire-pulse.service wireplumber.service
+After=pipewire.service pipewire-pulse.service wireplumber.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash -lc 'for attempt in {1..30}; do if /usr/bin/pactl info >/dev/null 2>&1 && /usr/bin/pactl set-card-profile alsa_card.pci-0000_00_0e.0-platform-sof-essx8336 "HiFi (HDMI1, HDMI2, HDMI3, Mic, Speaker)"; then /usr/bin/sleep 2; if /usr/bin/pactl set-default-sink alsa_output.pci-0000_00_0e.0-platform-sof-essx8336.HiFi__Speaker__sink; then exit 0; fi; fi; /usr/bin/sleep 2; done; exit 1'
+
+[Install]
+WantedBy=default.target
+UNIT
+    then
+        if systemctl --user daemon-reload >>"$LOG_FILE" 2>&1 && systemctl --user enable --now nocturne-audio-profile.service >>"$LOG_FILE" 2>&1; then
+            log_success "Built-in Speaker profile and default output configured for every login."
+        else
+            log_warn "Could not enable the user-level Speaker profile service."
+        fi
+    else
+        log_warn "Could not write the user-level Speaker profile service."
+    fi
+
+    log_info "PipeWire runs as a user service; Nocturne restores the internal Speaker profile after login."
 }
 
 
