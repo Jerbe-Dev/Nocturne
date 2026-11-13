@@ -993,7 +993,8 @@ phase_setup_firewalls_and_noctalia() {
     log_step "Applying Noctalia Preferences"
     if $DRY_RUN; then log_info "Dry Run: Skipping live Noctalia preference changes."; return; fi
     if [[ -f "$HOME/.config/noctalia/settings.json" ]] && command -v python3 >/dev/null 2>&1; then
-        python3 - "$HOME/.config/noctalia/settings.json" "$HOME/.config/noctalia/plugins.json" <<'PY'import json, sys
+        python3 - "$HOME/.config/noctalia/settings.json" "$HOME/.config/noctalia/plugins.json" <<'PY'
+import json, sys
 settings_path, plugins_path = sys.argv[1:3]
 try:
     with open(settings_path, encoding="utf-8") as f: settings = json.load(f)
