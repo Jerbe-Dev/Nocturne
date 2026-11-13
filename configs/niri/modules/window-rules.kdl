@@ -25,7 +25,7 @@ window-rule {
 // Apps:blur them all with xray false // 
 window-rule {
   background-effect {
-    blur true 
+    blur false 
     xray false
   }
 }
@@ -46,7 +46,7 @@ window-rule {
 window-rule {
   match app-id="brave-browser"   // add any browser you use.
   background-effect{
-    blur true
+    blur false
     xray true
   }
   open-maximized true
