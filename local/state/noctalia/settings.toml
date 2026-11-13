@@ -297,8 +297,8 @@ source = "wallpaper"
 wallpaper_scheme = "m3-content"
 
     [theme.templates]
-    builtin_ids = [ "btop", "cava", "gtk3", "gtk4", "hyprland", "kcolorscheme", "kitty", "niri", "qt", "starship" ]
-    community_ids = [ "spicetify", "zen-browser", "neovim", "obsidian", "vscode", "zed", "fuzzel", "obs", "papirus-icons", "yazi" ]
+    builtin_ids = [ "btop", "cava", "gtk3", "gtk4", "kcolorscheme", "kitty", "niri", "qt", "starship" ]
+    community_ids = [ "zen-browser", "neovim", "obsidian", "vscode", "zed", "fuzzel", "obs", "papirus-icons" ]
 
 [wallpaper]
 directory = "~/Pictures/Wallpapers"
@@ -309,13 +309,13 @@ transition_on_startup = true
     enabled = false
 
     [wallpaper.default]
-    path = "~/Pictures/Wallpapers/wall.png"
+    path = "~/Pictures/Wallpapers/crane.png"
 
     [wallpaper.last]
-    path = "~/Pictures/Wallpapers/wall.png"
+    path = "~/Pictures/Wallpapers/crane.png"
 
     [wallpaper.monitors.eDP-1]
-    path = "~/Pictures/Wallpapers/wall.png"
+    path = "~/Pictures/Wallpapers/crane.png"
 
 [widget.bar]
 show_idle_on_horizontal = false
