@@ -698,14 +698,7 @@ phase_deploy_configs() {
                 
                 rm -rf "$tmp_dest"
                 if cp -r "configs/$mod" "$tmp_dest" 2>>"$LOG_FILE"; then
-                    # Keep live Noctalia preferences/plugin state across rice updates.
-                    if [[ "$mod" == "noctalia" && -d "$final_dest" ]]; then
-                        for state_file in settings.json plugins.json; do
-                            if [[ -f "$final_dest/$state_file" ]]; then
-                                cp -p "$final_dest/$state_file" "$tmp_dest/$state_file" 2>>"$LOG_FILE" || true
-                            fi
-                        done
-                    fi
+                    # Noctalia v5 preferences live under ~/.local/state/noctalia and are deployed from local/.
                     if [ -e "$final_dest" ]; then
                         rm -rf "$final_dest" 2>>"$LOG_FILE"
                     fi
@@ -998,54 +991,7 @@ EOF
 phase_setup_firewalls_and_noctalia() {
     log_step "Applying Noctalia Preferences"
     if $DRY_RUN; then log_info "Dry Run: Skipping live Noctalia preference changes."; return; fi
-    if command -v python3 >/dev/null 2>&1; then
-        python3 - "$HOME/.config/noctalia/settings.json" "$HOME/.config/noctalia/plugins.json" <<'PY'
-import json, sys
-settings_path, plugins_path = sys.argv[1:3]
-try:
-    with open(settings_path, encoding="utf-8") as f: settings = json.load(f)
-except Exception: settings = {}
-bar = settings.setdefault("bar", {})
-widgets = bar.setdefault("widgets", {})
-left, center, right = (widgets.setdefault(k, []) for k in ("left", "center", "right"))
-control = next((w for w in left if w.get("id") == "ControlCenter"), None)
-if control is None:
-    control = {"id": "ControlCenter"}; left.insert(0, control)
-control["useDistroLogo"] = True; control["colorizeDistroLogo"] = False
-clock = next((w for w in center if w.get("id") == "Clock"), None)
-if clock is None:
-    clock = {"id": "Clock"}; center.append(clock)
-clock.update({"formatHorizontal":"hh:mm AP","formatVertical":"hh mm AP","tooltipFormat":"hh:mm AP ddd, MMM dd"})
-settings.setdefault("general", {}).update({"clockFormat":"hh:mm AP","clockStyle":"custom"})
-wallpaper = settings.setdefault("wallpaper", {})
-wallpaper["directory"] = "~/Pictures/Wallpapers"
-wallpaper["automationEnabled"] = False
-settings.setdefault("location", {})["use12hourFormat"] = True
-calculator = next((w for w in right if w.get("id") == "plugin:noctalia-calculator"), None)
-if calculator is None:
-    calculator = {"id":"plugin:noctalia-calculator","defaultSettings":{"precision":8,"showBarValue":True}}
-    right.insert(0, calculator)
-else:
-    right.remove(calculator)
-    right.insert(0, calculator)
-for w in right:
-    if w.get("id") == "plugin:usb-drive-manager": w.setdefault("defaultSettings", {})["fileBrowser"] = "nautilus"
-with open(settings_path,"w",encoding="utf-8") as f: json.dump(settings,f,indent=2); f.write("\n")
-try:
-    with open(plugins_path,encoding="utf-8") as f: plugins=json.load(f)
-except Exception: plugins={"sources":[],"states":{},"version":2}
-plugins.setdefault("sources",[])
-source={"enabled":True,"name":"Noctalia Plugins","url":"https://github.com/noctalia-dev/noctalia-plugins"}
-if not any(x.get("url")==source["url"] for x in plugins["sources"]): plugins["sources"].append(source)
-plugins.setdefault("states",{})["noctalia-calculator"]={"enabled":True,"sourceUrl":source["url"]}
-plugins.setdefault("states",{})["video-wallpaper"]={"enabled":True,"sourceUrl":source["url"]}
-plugins["version"]=2
-with open(plugins_path,"w",encoding="utf-8") as f: json.dump(plugins,f,indent=2); f.write("\n")
-PY
-        log_success "Noctalia preferences applied; calculator plugin enabled."
-    else
-        log_warn "No existing Noctalia settings.json found; start Noctalia once, then rerun this installer."
-    fi
+    log_info "Noctalia v5 TOML preferences are maintained in local/state/noctalia/settings.toml."
 
     # Restore the three static wallpapers shipped with the previous Niri setup.
     # Existing files are preserved; wallpaper rotation stays disabled.
