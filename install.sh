@@ -549,7 +549,13 @@ phase_resolve_dependencies() {
         fi
         local check_cmd="${DEFAULT_APP_BINARY_MAP[$app]}"
         local target_pkg="${DEFAULT_APP_PACKAGE_MAP[$app]}"
-        if ! command -v "$check_cmd" &>/dev/null; then
+        # polkit-gnome installs its agent under /usr/lib, not on PATH.
+        # Check the package database instead of command -v for this app.
+        if [[ "$app" == "polkit-gnome" ]]; then
+            if ! pacman -Qq "$target_pkg" &>/dev/null; then
+                missing_pkgs+=("$target_pkg")
+            fi
+        elif ! command -v "$check_cmd" &>/dev/null; then
             missing_pkgs+=("$target_pkg")
         fi
     done
