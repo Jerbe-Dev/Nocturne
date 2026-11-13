@@ -292,7 +292,7 @@ ui_scale = 0.80000000447034836
 
 [theme]
 builtin = "Noctalia"
-community_palette = "Catppuccin Lavender"
+community_palette = ""
 mode = "dark"
 source = "wallpaper"
 wallpaper_scheme = "m3-content"
@@ -307,16 +307,16 @@ transition = [ "disc", "honeycomb", "stripes", "wipe", "zoom" ]
 transition_on_startup = true
 
     [wallpaper.automation]
-    enabled = true
+    enabled = false
 
     [wallpaper.default]
-    path = "~/Pictures/Wallpapers/noctara-wall.png"
+    path = "~/Pictures/Wallpapers/wall.png"
 
     [wallpaper.last]
-    path = "~/Pictures/Wallpapers/noctara-wall.png"
+    path = "~/Pictures/Wallpapers/wall.png"
 
     [wallpaper.monitors.eDP-1]
-    path = "~/Pictures/Wallpapers/noctara-wall.png"
+    path = "~/Pictures/Wallpapers/wall.png"
 
 [widget.bar]
 show_idle_on_horizontal = false
