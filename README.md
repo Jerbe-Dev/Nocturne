@@ -1,20 +1,20 @@
 <div align="center">
 
-# 🌙 Noctara-dots
+# 🌙 Nocturne
 
 <sub><i>Because your desktop deserves better life choices.</i></sub>
 
 <br />
 
-<img src="assets/desktop.png" width="100%" alt="Noctara-dots Desktop Preview">
+<img src="assets/desktop.png" width="100%" alt="Nocturne Desktop Preview">
 
 <br />
 
 ![Arch Linux](https://img.shields.io/badge/Arch-Linux-1793D1?logo=arch-linux&logoColor=white)
 ![Wayland](https://img.shields.io/badge/Wayland-Niri%20%7C%20Hyprland-00BFFF)
 ![Noctalia](https://img.shields.io/badge/Noctalia-v5-purple)
-![License](https://img.shields.io/github/license/deadduck-09/noctara-dots)
-![Stars](https://img.shields.io/github/stars/deadduck-09/noctara-dots?style=social)
+![License](https://img.shields.io/github/license/Jerbe-Dev/Nocturne)
+![Stars](https://img.shields.io/github/stars/Jerbe-Dev/Nocturne?style=social)
 
 </div>
 
@@ -23,7 +23,7 @@
 ## 📌 Table of Contents
 
 - [Overview](#-overview)
-- [Why Noctara-dots?](#-why-noctara-dots)
+- [Why Nocturne?](#-why-noctara-dots)
 - [Showcase](#-showcase)
 - [Features](#-features)
 - [Software Used](#-software-used)
@@ -39,20 +39,20 @@
 
 ## ✨ Overview
 
-**Noctara-dots** is a modular, ready-to-use desktop rice for **Arch Linux**, built around **Noctalia v5** for both **Niri** Wayland compositor.
+**Nocturne** is a modular, ready-to-use desktop rice for **Arch Linux**, built around **Noctalia v5** for both **Niri** Wayland compositor.
 
-Instead of spending days manually tweaking individual configuration files, themes, animations, and keybindings, Noctara-dots delivers an out-of-the-box desktop experience that looks great and stays easy to customize.
+Instead of spending days manually tweaking individual configuration files, themes, animations, and keybindings, Nocturne delivers an out-of-the-box desktop experience that looks great and stays easy to customize.
 
 > 📖 **Looking for full setup guides?**
-> Check out the official [Noctara Documentation Site](https://deadduck-09.github.io/Noctara-Docs/) for full installation, customization, and troubleshooting steps.
+> Check out the official [Noctara Documentation Site](https://github.com/Jerbe-Dev/Nocturne) for full installation, customization, and troubleshooting steps.
 
 ---
 
-## ❓ Why Noctara-dots?
+## ❓ Why Nocturne?
 
 **Noctalia v5** provides a powerful shell, but configuring a complete desktop environment still requires configuring compositors, matching terminal themes, tweaking editors, setting up media control, and organizing keybindings.
 
-Noctara-dots bridges this gap by unifying these components into a consistent, modular framework:
+Nocturne bridges this gap by unifying these components into a consistent, modular framework:
 
 - 🧩 **Modular Architecture:** Tweak or swap individual applications without breaking your setup.
 - 🎨 **Unified Design:** Seamless colors, fonts, and aesthetics across shell, terminal, and editors.
@@ -133,7 +133,7 @@ Noctara-dots bridges this gap by unifying these components into a consistent, mo
 | **Prompt**         | Starship        |
 | **Editor**         | Neovim          |
 | **File Manager**   | Nautilus         |
-| **Music**          | MPD + rmpc      |
+| **Music**          | Riff      |
 | **Media Player**   | MPV             |
 | **System Info**    | Fastfetch       |
 
@@ -141,13 +141,13 @@ Noctara-dots bridges this gap by unifying these components into a consistent, mo
 
 ## 📚 Documentation
 
-For complete, detailed instructions on tweaking, extending, and troubleshooting Noctara-dots, check out the documentation files:
+For complete, detailed instructions on tweaking, extending, and troubleshooting Nocturne, check out the documentation files:
 
 > 💡 **Detailed Guides:**
 >
 > - [📖 **Full Wiki & User Guide**](https://deadduck-09.github.io/Noctara-Docs/) _(Overview of all detailed docs)_
-> - [⚙️ **Window Manager Settings**](https://deadduck-09.github.io/Noctara-Docs/configuration/window-managers/niri.html) _(Changing keybinds, env variables and monitor settings)_
-> - [🪟 **Customization**](https://deadduck-09.github.io/Noctara-Docs/customization/wallpapers.html) _(Changing Icons and wallpapers)_
+> - [⚙️ **Window Manager Settings**](https://github.com/Jerbe-Dev/Nocturne/tree/main/configs/niri) _(Changing keybinds, env variables and monitor settings)_
+> - [🪟 **Customization**](https://github.com/Jerbe-Dev/Nocturne/tree/main/Pictures/Wallpapers) _(Changing Icons and wallpapers)_
 
 ---
 
@@ -168,8 +168,8 @@ For complete, detailed instructions on tweaking, extending, and troubleshooting 
 Clone the repository:
 
 ```bash
-git clone https://github.com/deadduck-09/Noctara-Dots.git
-cd Noctara-Dots
+git clone https://github.com/deadduck-09/Nocturne.git
+cd Nocturne
 ```
 
 Run the installer:
@@ -245,7 +245,7 @@ You can mix and match components however you'd like.
 | Super + T | Kitty        |
 | Super + B | Brave        |
 | Super + E | Nautilus     |
-| Super + M | rmpc (MPD)   |
+| Super + M | Riff (Riff)   |
 | Super + O | Notes        |
 | Super + C | Code Editor  |
 
@@ -337,13 +337,13 @@ A huge thank you to the developers behind these amazing open-source projects.
 - **[Yazi](https://github.com/sxyazi/yazi)**
 - **[MPV](https://github.com/mpv-player/mpv)**
 
-Noctara-dots wouldn't exist without these amazing projects
+Nocturne wouldn't exist without these amazing projects
 
 ---
 
 # ⭐ Support
 
-If you enjoy Noctara-dots:
+If you enjoy Nocturne:
 
 - ⭐ Star the repository
 - 🍴 Fork it
