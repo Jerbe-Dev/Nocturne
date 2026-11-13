@@ -12,7 +12,7 @@ order = [ "default" ]
 
     [bar.default]
     center = [ "cat", "clock" ]
-    end = [ "plugin:noctalia-calculator", "media", "bar", "notifications", "battery", "session" ]
+    end = [ "calculator", "media", "bar", "notifications", "battery", "session" ]
     margin_ends = 215
     padding = 15
     radius = 80
@@ -214,7 +214,7 @@ position_vertical = "top_right"
 player_allowlist = [ "Spotify" ]
 
 [plugins]
-enabled = [ "dotnetrob/cat", "noctalia/noctalia-calculator", "noctalia/timer", "noctalia/screen_recorder" ]
+enabled = [ "dotnetrob/cat", "yuuto/calculator", "noctalia/timer", "noctalia/screen_recorder" ]
 
 [shell]
 avatar_path = "~/Pictures/Pfps-and-logos/icon.png"
@@ -331,6 +331,9 @@ cat_color = "on_surface"
 cat_color_mode = "custom"
 cat_size = 32
 type = "dotnetrob/cat:cat"
+
+[widget.calculator]
+type = "yuuto/calculator:bar"
 
 [widget.clock]
 format = "{:%H:%M|%a,%b%d}"
