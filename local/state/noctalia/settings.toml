@@ -12,7 +12,7 @@ order = [ "default" ]
 
     [bar.default]
     center = [ "cat", "clock" ]
-    end = [ "media", "bar", "notifications", "battery", "session", "plugin:noctalia-calculator" ]
+    end = [ "plugin:noctalia-calculator", "media", "bar", "notifications", "battery", "session" ]
     margin_ends = 215
     padding = 15
     radius = 80
@@ -214,7 +214,7 @@ position_vertical = "top_right"
 player_allowlist = [ "Spotify" ]
 
 [plugins]
-enabled = [ "dotnetrob/cat", "noctalia/timer", "noctalia/screen_recorder" ]
+enabled = [ "dotnetrob/cat", "noctalia/noctalia-calculator", "noctalia/timer", "noctalia/screen_recorder" ]
 
 [shell]
 avatar_path = "~/Pictures/Pfps-and-logos/icon.png"
