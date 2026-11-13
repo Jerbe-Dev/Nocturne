@@ -409,16 +409,16 @@ phase_setup_audio_bluetooth() {
         local audio_fix_unit="/etc/systemd/system/nocturne-audio-fix.service"
         if sudo tee "$audio_fix_unit" >/dev/null <<'UNIT'
     [Unit]
-    Description=Enable ES8336 DAC mixer switches
+Description=Enable ES8336 DAC mixer switches
     After=sound.target
     
     [Service]
-    Type=oneshot
-    ExecStart=/usr/bin/bash -lc 'for attempt in {1..30}; do if /usr/bin/amixer -c 0 cset numid=65 on && /usr/bin/amixer -c 0 cset numid=67 on; then exit 0; fi; /usr/bin/sleep 2; done; exit 1'
+Type=oneshot
+ExecStart=/usr/bin/bash -lc 'for attempt in {1..30}; do if /usr/bin/amixer -c 0 cset numid=65 on && /usr/bin/amixer -c 0 cset numid=67 on; then exit 0; fi; /usr/bin/sleep 2; done; exit 1'
     
     [Install]
     WantedBy=multi-user.target
-    UNIT
+UNIT
         then
             if sudo systemctl daemon-reload >>"$LOG_FILE" 2>&1 && sudo systemctl enable --now nocturne-audio-fix.service >>"$LOG_FILE" 2>&1; then
                 log_success "ES8336 DAC mixer switches will be restored after the sound card initializes."
@@ -435,17 +435,17 @@ phase_setup_audio_bluetooth() {
         mkdir -p "$audio_profile_dir"
         if cat > "$audio_profile_unit" <<'UNIT'
     [Unit]
-    Description=Select the built-in ES8336 speakers
-    Wants=pipewire.service pipewire-pulse.service wireplumber.service
-    After=pipewire.service pipewire-pulse.service wireplumber.service
+Description=Select the built-in ES8336 speakers
+Wants=pipewire.service pipewire-pulse.service wireplumber.service
+After=pipewire.service pipewire-pulse.service wireplumber.service
     
     [Service]
-    Type=oneshot
-    ExecStart=/usr/bin/bash -lc 'for attempt in {1..30}; do if /usr/bin/pactl info >/dev/null 2>&1 && /usr/bin/pactl set-card-profile alsa_card.pci-0000_00_0e.0-platform-sof-essx8336 "HiFi (HDMI1, HDMI2, HDMI3, Mic, Speaker)"; then /usr/bin/sleep 2; if /usr/bin/pactl set-default-sink alsa_output.pci-0000_00_0e.0-platform-sof-essx8336.HiFi__Speaker__sink; then exit 0; fi; fi; /usr/bin/sleep 2; done; exit 1'
+Type=oneshot
+ExecStart=/usr/bin/bash -lc 'for attempt in {1..30}; do if /usr/bin/pactl info >/dev/null 2>&1 && /usr/bin/pactl set-card-profile alsa_card.pci-0000_00_0e.0-platform-sof-essx8336 "HiFi (HDMI1, HDMI2, HDMI3, Mic, Speaker)"; then /usr/bin/sleep 2; if /usr/bin/pactl set-default-sink alsa_output.pci-0000_00_0e.0-platform-sof-essx8336.HiFi__Speaker__sink; then exit 0; fi; fi; /usr/bin/sleep 2; done; exit 1'
     
     [Install]
     WantedBy=default.target
-    UNIT
+UNIT
         then
             if systemctl --user daemon-reload >>"$LOG_FILE" 2>&1 && systemctl --user enable --now nocturne-audio-profile.service >>"$LOG_FILE" 2>&1; then
                 log_success "Built-in Speaker profile and default output configured for every login."
