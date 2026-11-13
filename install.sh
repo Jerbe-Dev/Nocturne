@@ -402,58 +402,67 @@ phase_setup_audio_bluetooth() {
         log_warn "Could not enable PipeWire sockets globally; they may still start through package presets."
     fi
 
-    # Retry mixer setup until the ES8336 ALSA card is initialized.
-    local audio_fix_unit="/etc/systemd/system/nocturne-audio-fix.service"
-    if sudo tee "$audio_fix_unit" >/dev/null <<'UNIT'
-[Unit]
-Description=Enable ES8336 DAC mixer switches
-After=sound.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/bash -lc 'for attempt in {1..30}; do if /usr/bin/amixer -c 0 cset numid=65 on && /usr/bin/amixer -c 0 cset numid=67 on; then exit 0; fi; /usr/bin/sleep 2; done; exit 1'
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-    then
-        if sudo systemctl daemon-reload >>"$LOG_FILE" 2>&1 && sudo systemctl enable --now nocturne-audio-fix.service >>"$LOG_FILE" 2>&1; then
-            log_success "ES8336 DAC mixer switches will be restored after the sound card initializes."
+    # These mixer controls and PipeWire identifiers are specific to the ECS CP43IGL ES8336 board.
+    # Never install hard-coded audio services on unrelated hardware.
+    if grep -qiE 'CP43IGL|ES8336' /proc/asound/card*/longname 2>/dev/null; then
+        # Retry mixer setup until the ES8336 ALSA card is initialized.
+        local audio_fix_unit="/etc/systemd/system/nocturne-audio-fix.service"
+        if sudo tee "$audio_fix_unit" >/dev/null <<'UNIT'
+    [Unit]
+    Description=Enable ES8336 DAC mixer switches
+    After=sound.target
+    
+    [Service]
+    Type=oneshot
+    ExecStart=/usr/bin/bash -lc 'for attempt in {1..30}; do if /usr/bin/amixer -c 0 cset numid=65 on && /usr/bin/amixer -c 0 cset numid=67 on; then exit 0; fi; /usr/bin/sleep 2; done; exit 1'
+    
+    [Install]
+    WantedBy=multi-user.target
+    UNIT
+        then
+            if sudo systemctl daemon-reload >>"$LOG_FILE" 2>&1 && sudo systemctl enable --now nocturne-audio-fix.service >>"$LOG_FILE" 2>&1; then
+                log_success "ES8336 DAC mixer switches will be restored after the sound card initializes."
+            else
+                log_warn "Could not enable the persistent ES8336 mixer service."
+            fi
         else
-            log_warn "Could not enable the persistent ES8336 mixer service."
+            log_warn "Could not write the persistent ES8336 mixer service."
         fi
+    
+        # Select the internal Speaker profile once the user's PipeWire session is ready.
+        local audio_profile_dir="$HOME/.config/systemd/user"
+        local audio_profile_unit="$audio_profile_dir/nocturne-audio-profile.service"
+        mkdir -p "$audio_profile_dir"
+        if cat > "$audio_profile_unit" <<'UNIT'
+    [Unit]
+    Description=Select the built-in ES8336 speakers
+    Wants=pipewire.service pipewire-pulse.service wireplumber.service
+    After=pipewire.service pipewire-pulse.service wireplumber.service
+    
+    [Service]
+    Type=oneshot
+    ExecStart=/usr/bin/bash -lc 'for attempt in {1..30}; do if /usr/bin/pactl info >/dev/null 2>&1 && /usr/bin/pactl set-card-profile alsa_card.pci-0000_00_0e.0-platform-sof-essx8336 "HiFi (HDMI1, HDMI2, HDMI3, Mic, Speaker)"; then /usr/bin/sleep 2; if /usr/bin/pactl set-default-sink alsa_output.pci-0000_00_0e.0-platform-sof-essx8336.HiFi__Speaker__sink; then exit 0; fi; fi; /usr/bin/sleep 2; done; exit 1'
+    
+    [Install]
+    WantedBy=default.target
+    UNIT
+        then
+            if systemctl --user daemon-reload >>"$LOG_FILE" 2>&1 && systemctl --user enable --now nocturne-audio-profile.service >>"$LOG_FILE" 2>&1; then
+                log_success "Built-in Speaker profile and default output configured for every login."
+            else
+                log_warn "Could not enable the user-level Speaker profile service."
+            fi
+        else
+            log_warn "Could not write the user-level Speaker profile service."
+        fi
+    
+    
+        log_info "CP43IGL ES8336 speaker profile configured."
     else
-        log_warn "Could not write the persistent ES8336 mixer service."
+        log_info "No CP43IGL/ES8336 card detected; skipping board-specific audio services."
     fi
 
-    # Select the internal Speaker profile once the user's PipeWire session is ready.
-    local audio_profile_dir="$HOME/.config/systemd/user"
-    local audio_profile_unit="$audio_profile_dir/nocturne-audio-profile.service"
-    mkdir -p "$audio_profile_dir"
-    if cat > "$audio_profile_unit" <<'UNIT'
-[Unit]
-Description=Select the built-in ES8336 speakers
-Wants=pipewire.service pipewire-pulse.service wireplumber.service
-After=pipewire.service pipewire-pulse.service wireplumber.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/bash -lc 'for attempt in {1..30}; do if /usr/bin/pactl info >/dev/null 2>&1 && /usr/bin/pactl set-card-profile alsa_card.pci-0000_00_0e.0-platform-sof-essx8336 "HiFi (HDMI1, HDMI2, HDMI3, Mic, Speaker)"; then /usr/bin/sleep 2; if /usr/bin/pactl set-default-sink alsa_output.pci-0000_00_0e.0-platform-sof-essx8336.HiFi__Speaker__sink; then exit 0; fi; fi; /usr/bin/sleep 2; done; exit 1'
-
-[Install]
-WantedBy=default.target
-UNIT
-    then
-        if systemctl --user daemon-reload >>"$LOG_FILE" 2>&1 && systemctl --user enable --now nocturne-audio-profile.service >>"$LOG_FILE" 2>&1; then
-            log_success "Built-in Speaker profile and default output configured for every login."
-        else
-            log_warn "Could not enable the user-level Speaker profile service."
-        fi
-    else
-        log_warn "Could not write the user-level Speaker profile service."
-    fi
-
-    log_info "PipeWire runs as a user service; Nocturne restores the internal Speaker profile after login."
+    log_info "PipeWire runs as a user service; board-specific speaker setup is applied only on matching hardware."
 }
 
 
@@ -645,6 +654,13 @@ phase_execute_backup() {
         verified_backups+=("Pictures")
     fi
 
+    # Preserve shell startup files that the installer may replace.
+    for shell_file in .bash_profile .zprofile .zshrc .p10k.zsh; do
+        if [ -e "$HOME/$shell_file" ]; then
+            verified_backups+=("home/$shell_file")
+        fi
+    done
+
     if [ ${#verified_backups[@]} -eq 0 ]; then
         log_info "No old configs or assets found to backup. Nothing to do here."
         return
@@ -676,6 +692,14 @@ phase_execute_backup() {
                 log_success "Stashed your old ~/Pictures away safely."
             else
                 log_fail "Failed to backup ~/Pictures."
+            fi
+        elif [[ "$target" == home/* ]]; then
+            local shell_file="${target#home/}"
+            mkdir -p "$BACKUP_DIR/home"
+            if cp -a "$HOME/$shell_file" "$BACKUP_DIR/home/" 2>>"$LOG_FILE"; then
+                log_success "Backed up ~/$shell_file."
+            else
+                log_fail "Failed to backup ~/$shell_file."
             fi
         fi
     done
@@ -1138,6 +1162,15 @@ execute_restore_operation() {
         if [ -d "$target_dir/Pictures" ]; then
             cp -a "$target_dir/Pictures/." "$HOME/Pictures/" 2>>"$LOG_FILE"
             log_success "Restored ~/Pictures items."
+        fi
+
+        if [ -d "$target_dir/home" ]; then
+            local shell_file
+            for shell_file in "$target_dir"/home/.* "$target_dir"/home/*; do
+                [ -f "$shell_file" ] || continue
+                cp -a "$shell_file" "$HOME/"
+                log_success "Restored ~/$(basename "$shell_file")."
+            done
         fi
 
         log_success "Rollback finished. Hopefully things work again."
