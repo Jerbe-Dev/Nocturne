@@ -44,7 +44,7 @@
 Instead of spending days manually tweaking individual configuration files, themes, animations, and keybindings, Nocturne delivers an out-of-the-box desktop experience that looks great and stays easy to customize.
 
 > 📖 **Looking for full setup guides?**
-> Check out the official [Noctara Documentation Site](https://github.com/Jerbe-Dev/Nocturne) for full installation, customization, and troubleshooting steps.
+> Check out the official [Nocturne repository documentation](https://github.com/Jerbe-Dev/Nocturne) for full installation, customization, and troubleshooting steps.
 
 ---
 
@@ -245,7 +245,6 @@ You can mix and match components however you'd like.
 | Super + T | Kitty        |
 | Super + B | Brave        |
 | Super + E | Nautilus     |
-| Super + M | Riff (Riff)   |
 | Super + O | Notes        |
 | Super + C | Code Editor  |
 
@@ -355,3 +354,4 @@ Every contribution, issue report, suggestion, or star helps make the project eve
 ---
 
 > _"My desktop may look minimal, but the hours spent configuring it definitely weren't."_ 🌙
+
