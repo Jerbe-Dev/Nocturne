@@ -382,7 +382,7 @@ phase_setup_audio_bluetooth() {
         return
     fi
 
-    local audio_bt_packages=(pipewire pipewire-alsa pipewire-pulse wireplumber sof-firmware bluez bluez-utils)
+    local audio_bt_packages=(pipewire pipewire-alsa pipewire-pulse wireplumber sof-firmware alsa-utils bluez bluez-utils)
     log_info "Installing audio, Intel SOF firmware, and Bluetooth packages..."
     if ! sudo pacman -S --needed --noconfirm "${audio_bt_packages[@]}" 2>>"$LOG_FILE"; then
         log_fail "Could not install the complete audio/Bluetooth package set."
@@ -402,6 +402,32 @@ phase_setup_audio_bluetooth() {
         log_success "PipeWire user sockets enabled globally."
     else
         log_warn "Could not enable PipeWire sockets globally; they may still start through package presets."
+    fi
+
+    # ES8336 headphone DAC mixer switches can default to OFF on this laptop.
+    # Keep them enabled after every boot, not just during this installer run.
+    local audio_fix_unit="/etc/systemd/system/nocturne-audio-fix.service"
+    if sudo tee "$audio_fix_unit" >/dev/null <<'UNIT'
+[Unit]
+Description=Enable ES8336 headphone DAC mixer switches
+After=sound.target
+
+[Service]
+Type=oneshot
+ExecStartPre=/usr/bin/amixer -c 0 cset numid=65 on
+ExecStart=/usr/bin/amixer -c 0 cset numid=67 on
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+    then
+        if sudo systemctl daemon-reload >>"$LOG_FILE" 2>&1 && sudo systemctl enable --now nocturne-audio-fix.service >>"$LOG_FILE" 2>&1; then
+            log_success "ES8336 headphone DAC switches enabled and configured to restore on every boot."
+        else
+            log_warn "Could not enable the persistent ES8336 audio fix service."
+        fi
+    else
+        log_warn "Could not write the persistent ES8336 audio fix service."
     fi
 
     log_info "PipeWire runs as a user service after login; no system-wide audio daemon is started."
