@@ -1009,6 +1009,48 @@ EOF
     log_success "Riff launcher is ready in the application menu."
 }
 
+
+phase_install_pwall() {
+    log_info "Installing pwall Photo and Video Gallery"
+
+    if $DRY_RUN; then
+        log_info "Dry Run: Would install Flatpak, add Flathub, and install pwall."
+        return
+    fi
+
+    if ! $HAS_INTERNET; then
+        log_warn "No internet. Skipping pwall installation."
+        FAILED_PACKAGES+=("pwall")
+        return
+    fi
+
+    if ! command -v flatpak >/dev/null 2>&1; then
+        log_info "Installing Flatpak from the official Arch repositories..."
+        if ! sudo pacman -S --needed --noconfirm flatpak 2>>"$LOG_FILE"; then
+            log_fail "Could not install Flatpak; pwall cannot be installed."
+            FAILED_PACKAGES+=("flatpak" "pwall")
+            return
+        fi
+        INSTALLED_PACKAGES+=("flatpak")
+    else
+        ALREADY_PRESENT_PACKAGES+=("flatpak")
+    fi
+
+    if ! flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo >>"$LOG_FILE" 2>&1; then
+        log_fail "Could not add the Flathub user remote."
+        FAILED_PACKAGES+=("pwall")
+        return
+    fi
+
+    if flatpak install --user --noninteractive --or-update flathub io.github.ltiber.Pwall >>"$LOG_FILE" 2>&1; then
+        log_success "pwall photo and video gallery is installed."
+        INSTALLED_PACKAGES+=("pwall (Flathub)")
+    else
+        log_fail "Could not install pwall from Flathub."
+        FAILED_PACKAGES+=("pwall")
+    fi
+}
+
 phase_setup_firewalls_and_noctalia() {
     log_step "Applying Noctalia Preferences"
     if $DRY_RUN; then log_info "Dry Run: Skipping live Noctalia preference changes."; return; fi
@@ -1169,6 +1211,7 @@ run_orchestrated_installer() {
     phase_setup_firewalls_and_noctalia
     phase_install_shell_config
     phase_install_riff
+    phase_install_pwall
     phase_signal_environments
     phase_compile_summary
     
