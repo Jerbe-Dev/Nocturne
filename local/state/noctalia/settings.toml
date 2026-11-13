@@ -12,7 +12,7 @@ order = [ "default" ]
 
     [bar.default]
     center = [ "cat", "clock" ]
-    end = [ "calculator", "media", "bar", "notifications", "battery", "session" ]
+    end = [ "media", "calculator", "bar", "notifications", "battery", "session" ]
     margin_ends = 215
     padding = 15
     radius = 80
