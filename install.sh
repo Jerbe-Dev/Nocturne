@@ -110,7 +110,7 @@ declare -A DEFAULT_APP_PACKAGE_MAP=(
 
 # --- Keep track of what actually happened ---
 CURRENT_STEP=0
-TOTAL_STEPS=13
+TOTAL_STEPS=10
 
 INSTALLED_CONFIGS=()
 SKIPPED_CONFIGS=()
@@ -197,8 +197,7 @@ log_fail()    { echo -e "  ${RED}❌${NC} $1" >&2; log_to_file "ERROR" "$1"; }
 log_info()    { echo -e "  ${CYAN}ℹ${NC} $1" >&2; log_to_file "INFO" "$1"; }
 log_warn()    { echo -e "  ${YELLOW}⚠${NC} $1" >&2; log_to_file "WARN" "$1"; }
 
-# ==============================================================================
-# 3. Environment & Sanity Checks
+# ==============================================================================# 3. Environment & Sanity Checks
 # ==============================================================================
 
 verify_environment() {
@@ -337,7 +336,7 @@ phase_validate_env() {
 }
 
 phase_build_noctalia() {
-    log_step "Checking for Noctalia Shell"
+    log_info "Checking for Noctalia Shell"
     if command -v noctalia &>/dev/null; then
         log_success "Noctalia is already chilling on your system."
         ALREADY_PRESENT_PACKAGES+=("noctalia-git")
@@ -397,7 +396,6 @@ phase_setup_audio_bluetooth() {
     else
         log_fail "Could not enable bluetooth.service."
     fi
-
     if systemctl --global enable pipewire.socket pipewire-pulse.socket >>"$LOG_FILE" 2>&1; then
         log_success "PipeWire user sockets enabled globally."
     else
@@ -502,7 +500,7 @@ phase_system_refresh() {
 }
 
 phase_inspect_dependencies() {
-    log_step "Checking Your Installed Toys"
+    log_info "Checking Your Installed Toys"
     local modules
     mapfile -t modules < <(get_discovered_modules)
     
@@ -597,7 +595,6 @@ phase_resolve_dependencies() {
 phase_execute_backup() {
     log_step "Backing Up Your Old Junk"
     if $DRY_RUN; then log_info "Dry Run: Not touching your files."; return; fi
-
     local modules
     mapfile -t modules < <(get_discovered_modules)
     local verified_backups=()
@@ -798,7 +795,6 @@ phase_install_shell_config() {
         log_info "Dry Run: Not messing with your shell configs today."
         return
     fi
-
     local helper
     helper=$(get_system_aur_helper)
 
@@ -889,7 +885,7 @@ phase_install_shell_config() {
 }
 
 phase_install_riff() {
-    log_step "Installing Riff Music Player"
+    log_info "Installing Riff Music Player"
     local riff_path="$HOME/.local/bin/riff"
     local desktop_file="$HOME/.local/share/applications/riff.desktop"
 
@@ -997,8 +993,7 @@ phase_setup_firewalls_and_noctalia() {
     log_step "Applying Noctalia Preferences"
     if $DRY_RUN; then log_info "Dry Run: Skipping live Noctalia preference changes."; return; fi
     if [[ -f "$HOME/.config/noctalia/settings.json" ]] && command -v python3 >/dev/null 2>&1; then
-        python3 - "$HOME/.config/noctalia/settings.json" "$HOME/.config/noctalia/plugins.json" <<'PY'
-import json, sys
+        python3 - "$HOME/.config/noctalia/settings.json" "$HOME/.config/noctalia/plugins.json" <<'PY'import json, sys
 settings_path, plugins_path = sys.argv[1:3]
 try:
     with open(settings_path, encoding="utf-8") as f: settings = json.load(f)
@@ -1038,7 +1033,7 @@ PY
 }
 
 phase_signal_environments() {
-    log_step "Telling Apps to Refresh"
+    log_info "Telling Apps to Refresh"
     if $DRY_RUN; then log_info "Dry Run: Skipping live app reloads."; return; fi
 
     if pgrep -x "kitty" &>/dev/null; then
@@ -1198,5 +1193,3 @@ main() {
             ;;
     esac
 }
-
-main
