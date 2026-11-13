@@ -266,7 +266,7 @@ You can mix and match components however you'd like.
 | 📝 Code Editor  | VSCodium    |
 | 📖 Notes        | Obsidian    |
 | 📂 File Manager | Nautilus     |
-| 🎵 Music        | MPD + rmpc   |
+| 🎵 Music        | Riff          |
 
 All shortcuts are configured around these applications by default, but changing them only requires editing a few lines thanks to the modular configuration.
 
