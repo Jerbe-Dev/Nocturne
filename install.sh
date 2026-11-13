@@ -305,8 +305,6 @@ install_aur_helper() {
 get_system_aur_helper() {
     if command -v paru &>/dev/null; then
         echo "paru"
-    elif command -v yay &>/dev/null; then
-        echo "yay"
     else
         if install_aur_helper; then
             echo "paru"
