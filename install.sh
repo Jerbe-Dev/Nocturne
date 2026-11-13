@@ -1021,8 +1021,13 @@ wallpaper = settings.setdefault("wallpaper", {})
 wallpaper["directory"] = "~/Pictures/Wallpapers"
 wallpaper["automationEnabled"] = False
 settings.setdefault("location", {})["use12hourFormat"] = True
-if not any(w.get("id") == "plugin:noctalia-calculator" for w in right):
-    right.append({"id":"plugin:noctalia-calculator","defaultSettings":{"precision":8,"showBarValue":True}})
+calculator = next((w for w in right if w.get("id") == "plugin:noctalia-calculator"), None)
+if calculator is None:
+    calculator = {"id":"plugin:noctalia-calculator","defaultSettings":{"precision":8,"showBarValue":True}}
+    right.insert(0, calculator)
+else:
+    right.remove(calculator)
+    right.insert(0, calculator)
 for w in right:
     if w.get("id") == "plugin:usb-drive-manager": w.setdefault("defaultSettings", {})["fileBrowser"] = "nautilus"
 with open(settings_path,"w",encoding="utf-8") as f: json.dump(settings,f,indent=2); f.write("\n")
