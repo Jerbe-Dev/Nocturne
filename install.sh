@@ -441,7 +441,7 @@ phase_setup_desktop_support() {
 
     # Install full Unicode fonts for Qt/Noctalia UI. Monocraft is reserved
     # for Kitty; it is not a suitable system-wide fallback font.
-    local desktop_packages=(noto-fonts noto-fonts-emoji ttf-nerd-fonts-symbols qt6ct)
+    local desktop_packages=(noto-fonts noto-fonts-emoji ttf-nerd-fonts-symbols qt6ct qt6-multimedia ffmpeg)
     if sudo pacman -S --needed --noconfirm uwsm "${desktop_packages[@]}" 2>>"$LOG_FILE"; then
         log_success "UWSM, Noto fallback fonts, Nerd Font symbols, and Qt cursor support are installed."
     else
@@ -1011,6 +1011,9 @@ if clock is None:
     clock = {"id": "Clock"}; center.append(clock)
 clock.update({"formatHorizontal":"hh:mm AP","formatVertical":"hh mm AP","tooltipFormat":"hh:mm AP ddd, MMM dd"})
 settings.setdefault("general", {}).update({"clockFormat":"hh:mm AP","clockStyle":"custom"})
+wallpaper = settings.setdefault("wallpaper", {})
+wallpaper["directory"] = "~/Pictures/Wallpapers"
+wallpaper["automationEnabled"] = False
 settings.setdefault("location", {})["use12hourFormat"] = True
 if not any(w.get("id") == "plugin:noctalia-calculator" for w in right):
     right.append({"id":"plugin:noctalia-calculator","defaultSettings":{"precision":8,"showBarValue":True}})
@@ -1024,6 +1027,7 @@ plugins.setdefault("sources",[])
 source={"enabled":True,"name":"Noctalia Plugins","url":"https://github.com/noctalia-dev/noctalia-plugins"}
 if not any(x.get("url")==source["url"] for x in plugins["sources"]): plugins["sources"].append(source)
 plugins.setdefault("states",{})["noctalia-calculator"]={"enabled":True,"sourceUrl":source["url"]}
+plugins.setdefault("states",{})["video-wallpaper"]={"enabled":True,"sourceUrl":source["url"]}
 plugins["version"]=2
 with open(plugins_path,"w",encoding="utf-8") as f: json.dump(plugins,f,indent=2); f.write("\\n")
 PY
@@ -1031,6 +1035,30 @@ PY
     else
         log_warn "No existing Noctalia settings.json found; start Noctalia once, then rerun this installer."
     fi
+
+    # Restore the three static wallpapers shipped with the previous Niri setup.
+    # Existing files are preserved; wallpaper rotation stays disabled.
+    local wallpaper_dir="$HOME/Pictures/Wallpapers"
+    mkdir -p "$wallpaper_dir" "$wallpaper_dir/Live-Wallpapers"
+    local wallpaper_name
+    for wallpaper_name in "Violet-Evergarden.png" "crane.png" "deathnote.jpg"; do
+        if [[ -s "$wallpaper_dir/$wallpaper_name" ]]; then
+            log_info "Keeping existing wallpaper: $wallpaper_name"
+            continue
+        fi
+        if ! $HAS_INTERNET; then
+            log_warn "Offline; could not download $wallpaper_name."
+            continue
+        fi
+        if curl -fL --retry 3 "https://raw.githubusercontent.com/Jerbe-Dev/Niri/main/wallpapers/$wallpaper_name" -o "$wallpaper_dir/$wallpaper_name" >>"$LOG_FILE" 2>&1; then
+            log_success "Restored wallpaper: $wallpaper_name"
+        else
+            rm -f "$wallpaper_dir/$wallpaper_name"
+            log_warn "Could not download wallpaper: $wallpaper_name"
+        fi
+    done
+    log_info "Wallpaper rotation is disabled. Choose and change wallpapers manually."
+    log_info "Video Wallpaper plugin is available; add a video to ~/Pictures/Wallpapers/Live-Wallpapers and select it in the plugin."
 }
 
 phase_signal_environments() {
