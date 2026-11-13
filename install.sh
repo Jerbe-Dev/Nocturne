@@ -1019,7 +1019,7 @@ if not any(w.get("id") == "plugin:noctalia-calculator" for w in right):
     right.append({"id":"plugin:noctalia-calculator","defaultSettings":{"precision":8,"showBarValue":True}})
 for w in right:
     if w.get("id") == "plugin:usb-drive-manager": w.setdefault("defaultSettings", {})["fileBrowser"] = "nautilus"
-with open(settings_path,"w",encoding="utf-8") as f: json.dump(settings,f,indent=2); f.write("\\n")
+with open(settings_path,"w",encoding="utf-8") as f: json.dump(settings,f,indent=2); f.write("\n")
 try:
     with open(plugins_path,encoding="utf-8") as f: plugins=json.load(f)
 except Exception: plugins={"sources":[],"states":{},"version":2}
@@ -1029,7 +1029,7 @@ if not any(x.get("url")==source["url"] for x in plugins["sources"]): plugins["so
 plugins.setdefault("states",{})["noctalia-calculator"]={"enabled":True,"sourceUrl":source["url"]}
 plugins.setdefault("states",{})["video-wallpaper"]={"enabled":True,"sourceUrl":source["url"]}
 plugins["version"]=2
-with open(plugins_path,"w",encoding="utf-8") as f: json.dump(plugins,f,indent=2); f.write("\\n")
+with open(plugins_path,"w",encoding="utf-8") as f: json.dump(plugins,f,indent=2); f.write("\n")
 PY
         log_success "Noctalia preferences applied; calculator plugin enabled."
     else
