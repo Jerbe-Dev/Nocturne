@@ -39,10 +39,8 @@ readonly PREFERRED_ORDER=(
     "noctalia"
     "kitty"
     "waybar"
-    "mpd"
     "mpv"
     "fastfetch"
-    "rmpc"
 )
 
 # --- Mapping commands to their actual package names ---
@@ -240,7 +238,7 @@ get_discovered_modules() {
                 local base_entry="${entry##*/}"
 
                 # The user chose Nautilus; never deploy or install the old Yazi config.
-                if [[ "$base_entry" == "yazi" ]]; then
+                if [[ "$base_entry" == "yazi" || "$base_entry" == "mpd" || "$base_entry" == "rmpc" ]]; then
                     continue
                 fi
 
@@ -404,7 +402,7 @@ phase_setup_audio_bluetooth() {
 
     # These mixer controls and PipeWire identifiers are specific to the ECS CP43IGL ES8336 board.
     # Never install hard-coded audio services on unrelated hardware.
-    if grep -qiE 'CP43IGL|ES8336' /proc/asound/card*/longname 2>/dev/null; then
+    if grep -qi 'CP43IGL' /proc/asound/card*/longname 2>/dev/null; then
         # Retry mixer setup until the ES8336 ALSA card is initialized.
         local audio_fix_unit="/etc/systemd/system/nocturne-audio-fix.service"
         if sudo tee "$audio_fix_unit" >/dev/null <<'UNIT'
