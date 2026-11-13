@@ -147,7 +147,6 @@ widget_order = [
         background = false
         center_text = true
         clock_style = "digital"
-        format = "{:%I:%M %p}"
 
     [lockscreen_widgets.widget.lockscreen-widget-0000000000000003]
     box_height = 0.0
@@ -218,7 +217,6 @@ player_allowlist = [ "Spotify" ]
 enabled = [ "dotnetrob/cat", "yuuto/calculator", "noctalia/timer", "noctalia/screen_recorder" ]
 
 [shell]
-time_format = "{:%I:%M %p}"
 avatar_path = "~/Pictures/Pfps-and-logos/icon.png"
 font_family = "JetBrains Mono"
 niri_overview_type_to_launch_enabled = true
