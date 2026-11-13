@@ -993,6 +993,18 @@ phase_setup_firewalls_and_noctalia() {
     if $DRY_RUN; then log_info "Dry Run: Skipping live Noctalia preference changes."; return; fi
     log_info "Noctalia v5 TOML preferences are maintained in local/state/noctalia/settings.toml."
 
+    # Fetch and activate the community calculator immediately when Noctalia is running.
+    # The declarative settings.toml also enables it on the next shell start.
+    if command -v noctalia >/dev/null 2>&1; then
+        if noctalia msg plugins enable yuuto/calculator >>"$LOG_FILE" 2>&1; then
+            log_success "Noctalia Calculator (yuuto/calculator) is installed and enabled."
+        else
+            log_warn "Could not activate the calculator in this session; it remains enabled in settings.toml for the next Noctalia start."
+        fi
+    else
+        log_warn "Noctalia CLI not found; calculator remains configured for the next Noctalia start."
+    fi
+
     # Restore the three static wallpapers shipped with the previous Niri setup.
     # Existing files are preserved; wallpaper rotation stays disabled.
     local wallpaper_dir="$HOME/Pictures/Wallpapers"
