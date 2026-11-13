@@ -403,30 +403,6 @@ phase_setup_audio_bluetooth() {
     # These mixer controls and PipeWire identifiers are specific to the ECS CP43IGL ES8336 board.
     # Never install hard-coded audio services on unrelated hardware.
     if grep -qi 'CP43IGL' /proc/asound/card*/longname 2>/dev/null; then
-        # Retry mixer setup until the ES8336 ALSA card is initialized.
-        local audio_fix_unit="/etc/systemd/system/nocturne-audio-fix.service"
-        if sudo tee "$audio_fix_unit" >/dev/null <<'UNIT'
-    [Unit]
-Description=Enable ES8336 DAC mixer switches
-    After=sound.target
-    
-    [Service]
-Type=oneshot
-ExecStart=/usr/bin/bash -lc 'for attempt in {1..30}; do if /usr/bin/amixer -c 0 cset numid=65 on && /usr/bin/amixer -c 0 cset numid=67 on; then exit 0; fi; /usr/bin/sleep 2; done; exit 1'
-    
-    [Install]
-    WantedBy=multi-user.target
-UNIT
-        then
-            if sudo systemctl daemon-reload >>"$LOG_FILE" 2>&1 && sudo systemctl enable --now nocturne-audio-fix.service >>"$LOG_FILE" 2>&1; then
-                log_success "ES8336 DAC mixer switches will be restored after the sound card initializes."
-            else
-                log_warn "Could not enable the persistent ES8336 mixer service."
-            fi
-        else
-            log_warn "Could not write the persistent ES8336 mixer service."
-        fi
-    
         # Select the internal Speaker profile once the user's PipeWire session is ready.
         local audio_profile_dir="$HOME/.config/systemd/user"
         local audio_profile_unit="$audio_profile_dir/nocturne-audio-profile.service"
