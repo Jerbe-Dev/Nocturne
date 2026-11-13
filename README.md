@@ -23,7 +23,7 @@
 ## 📌 Table of Contents
 
 - [Overview](#-overview)
-- [Why Nocturne?](#-why-noctara-dots)
+- [Why Nocturne?](#-why-nocturne)
 - [Showcase](#-showcase)
 - [Features](#-features)
 - [Software Used](#-software-used)
@@ -145,7 +145,7 @@ For complete, detailed instructions on tweaking, extending, and troubleshooting 
 
 > 💡 **Detailed Guides:**
 >
-> - [📖 **Full Wiki & User Guide**](https://deadduck-09.github.io/Noctara-Docs/) _(Overview of all detailed docs)_
+> - [📖 **Full Wiki & User Guide**](https://github.com/Jerbe-Dev/Nocturne) _(Overview of all detailed docs)_
 > - [⚙️ **Window Manager Settings**](https://github.com/Jerbe-Dev/Nocturne/tree/main/configs/niri) _(Changing keybinds, env variables and monitor settings)_
 > - [🪟 **Customization**](https://github.com/Jerbe-Dev/Nocturne/tree/main/Pictures/Wallpapers) _(Changing Icons and wallpapers)_
 
@@ -168,7 +168,7 @@ For complete, detailed instructions on tweaking, extending, and troubleshooting 
 Clone the repository:
 
 ```bash
-git clone https://github.com/deadduck-09/Nocturne.git
+git clone https://github.com/Jerbe-Dev/Nocturne.git
 cd Nocturne
 ```
 
@@ -212,7 +212,7 @@ Copy the wallpapers:
 
 ```bash
 mkdir -p ~/Pictures/Wallpapers
-cp wallpapers/* ~/Pictures/Wallpapers/
+cp -r Pictures/Wallpapers/* ~/Pictures/Wallpapers/
 ```
 
 You can mix and match components however you'd like.
