@@ -12,7 +12,7 @@ order = [ "default" ]
 
     [bar.default]
     center = [ "cat", "clock" ]
-    end = [ "media", "bar", "notifications", "battery", "session" ]
+    end = [ "media", "bar", "notifications", "battery", "session", "plugin:noctalia-calculator" ]
     margin_ends = 215
     padding = 15
     radius = 80
@@ -28,7 +28,6 @@ warning_threshold = 15
 enabled = true
 
 [control_center]
-hidden_tabs = [ "monitor" ]
 sidebar_section = "none"
 
     [control_center.calendar]
