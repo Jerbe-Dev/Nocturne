@@ -135,7 +135,7 @@ Nocturne bridges this gap by unifying these components into a consistent, modula
 | **File Manager**   | Nautilus         |
 | **Music**          | Riff      |
 | **Media Player**   | MPV             |
-| **Media Gallery**  | pwall           |
+| **Image Viewer**   | Loupe           |
 | **System Info**    | Fastfetch       |
 
 ---
