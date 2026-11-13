@@ -147,6 +147,7 @@ widget_order = [
         background = false
         center_text = true
         clock_style = "digital"
+        format = "{:%I:%M %p}"
 
     [lockscreen_widgets.widget.lockscreen-widget-0000000000000003]
     box_height = 0.0
@@ -225,6 +226,7 @@ polkit_agent = true
 screen_time_enabled = true
 show_location = false
 ui_scale = 0.80000000447034836
+time_format = "{:%I:%M %p}"
 
     [shell.launcher]
     categories = false
