@@ -449,7 +449,7 @@ phase_setup_desktop_support() {
 
     # Install full Unicode fonts for Qt/Noctalia UI. Monocraft is reserved
     # for Kitty; it is not a suitable system-wide fallback font.
-    local desktop_packages=(noto-fonts noto-fonts-emoji ttf-nerd-fonts-symbols qt6ct qt6-multimedia ffmpeg)
+    local desktop_packages=(noto-fonts noto-fonts-emoji ttf-nerd-fonts-symbols qt6ct qt6-multimedia ffmpeg xdg-utils)
     if sudo pacman -S --needed --noconfirm uwsm "${desktop_packages[@]}" 2>>"$LOG_FILE"; then
         log_success "UWSM, Noto fallback fonts, Nerd Font symbols, and Qt cursor support are installed."
     else
@@ -1013,6 +1013,38 @@ EOF
 
 
 
+phase_set_default_image_viewer() {
+    log_step "Setting Loupe as Default Image Viewer"
+    if $DRY_RUN; then
+        log_info "Dry Run: Would set Loupe as the default for common image formats."
+        return
+    fi
+
+    if ! command -v xdg-mime >/dev/null 2>&1; then
+        log_warn "xdg-mime is unavailable; cannot set image file associations."
+        return
+    fi
+    if ! command -v loupe >/dev/null 2>&1; then
+        log_warn "Loupe is not installed; skipping image file associations."
+        return
+    fi
+
+    local mime failed=false
+    for mime in image/png image/jpeg image/webp image/gif image/bmp image/tiff image/avif; do
+        if ! xdg-mime default org.gnome.Loupe.desktop "$mime" >>"$LOG_FILE" 2>&1; then
+            log_warn "Could not set Loupe as the default for $mime."
+            failed=true
+        fi
+    done
+
+    if $failed; then
+        log_warn "Some image file associations could not be configured."
+    else
+        log_success "Loupe is now the default image viewer for PNG, JPEG, WebP, GIF, BMP, TIFF, and AVIF."
+    fi
+}
+
+
 phase_setup_firewalls_and_noctalia() {
     log_step "Applying Noctalia Preferences"
     if $DRY_RUN; then log_info "Dry Run: Skipping live Noctalia preference changes."; return; fi
@@ -1173,6 +1205,7 @@ run_orchestrated_installer() {
     phase_setup_firewalls_and_noctalia
     phase_install_shell_config
     phase_install_riff
+    phase_set_default_image_viewer
     phase_signal_environments
     phase_compile_summary
     
