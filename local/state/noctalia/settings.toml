@@ -1,4 +1,4 @@
-config_version = 2
+config_version = 20
 
 [accessibility]
 ui_scale = 0.80000000447034836
@@ -11,15 +11,103 @@ sound_volume = 0.99999997764825821
 order = [ "default" ]
 
     [bar.default]
-    center = [ "cat", "clock" ]
-    end = [ "media", "calculator", "bar", "notifications", "battery", "session" ]
-    margin_ends = 215
-    padding = 15
-    radius = 80
-    scale = 0.95000000670552254
-    start = [ "control-center", "workspaces", "sysmon" ]
-    thickness = 33
+    center = [ "cat", "group:g2" ]
+    end = [ "group:g1", "group:g6", "group:g7", "group:g8" ]
+    font_weight = 700
+    margin_ends = "0%"
+    position = "left"
+    radius = 0
+    start = [ "group:g3", "group:g4", "group:g5" ]
+    thickness = 35
     widget_spacing = 10
+
+        [[bar.default.capsule_group]]
+        accordion = false
+        accordion_direction = "end"
+        border_width = 1.0
+        enabled = true
+        fill = "surface_container"
+        id = "g1"
+        members = [ "network", "bluetooth", "volume" ]
+        opacity = 1.0
+        padding = 6.0
+
+        [[bar.default.capsule_group]]
+        accordion = false
+        accordion_direction = "end"
+        border_width = 1.0
+        enabled = true
+        fill = "surface_container"
+        id = "g2"
+        members = [ "clock" ]
+        opacity = 1.0
+        padding = 6.0
+
+        [[bar.default.capsule_group]]
+        accordion = false
+        accordion_direction = "end"
+        border_width = 1.0
+        enabled = true
+        fill = "surface_container"
+        id = "g3"
+        members = [ "control-center", "workspaces" ]
+        opacity = 1.0
+        padding = 6.0
+
+        [[bar.default.capsule_group]]
+        accordion = false
+        accordion_direction = "end"
+        border_width = 1.0
+        enabled = true
+        fill = "surface_container"
+        id = "g4"
+        members = [ "sysmon" ]
+        opacity = 1.0
+        padding = 6.0
+
+        [[bar.default.capsule_group]]
+        accordion = false
+        accordion_direction = "end"
+        border_width = 1.0
+        enabled = true
+        fill = "surface_container"
+        id = "g6"
+        members = [ "notifications" ]
+        opacity = 1.0
+        padding = 6.0
+
+        [[bar.default.capsule_group]]
+        accordion = false
+        accordion_direction = "end"
+        border_width = 1.0
+        enabled = true
+        fill = "surface_container"
+        id = "g7"
+        members = [ "battery" ]
+        opacity = 1.0
+        padding = 6.0
+
+        [[bar.default.capsule_group]]
+        accordion = false
+        accordion_direction = "end"
+        border_width = 1.0
+        enabled = true
+        fill = "surface_container"
+        id = "g8"
+        members = [ "session" ]
+        opacity = 1.0
+        padding = 6.0
+
+        [[bar.default.capsule_group]]
+        accordion = false
+        accordion_direction = "end"
+        border_width = 1.0
+        enabled = true
+        fill = "surface_container"
+        id = "g5"
+        members = [ "media" ]
+        opacity = 1.0
+        padding = 6.0
 
 [battery]
 warning_threshold = 15
@@ -28,10 +116,12 @@ warning_threshold = 15
 enabled = true
 
 [control_center]
+hidden_tabs = [ "power", "weather", "calendar", "notifications" ]
 sidebar_section = "none"
 
     [control_center.calendar]
     show_events_card = false
+    show_week_numbers = true
 
     [[control_center.shortcuts]]
     type = "wifi"
@@ -40,37 +130,33 @@ sidebar_section = "none"
     type = "bluetooth"
 
     [[control_center.shortcuts]]
-    type = "caffeine"
+    type = "dark_mode"
 
     [[control_center.shortcuts]]
-    type = "dark_mode"
+    type = "notification"
 
 [desktop_widgets]
 schema_version = 2
-widget_order = [ "desktop-widget-0000000000000001" ]
+widget_order = [ "desktop-widget-0000000000000002" ]
 
     [desktop_widgets.grid]
     cell_size = 16
     major_interval = 4
     visible = true
 
-    [desktop_widgets.widget.desktop-widget-0000000000000001]
-    box_height = 368.0
-    box_width = 1344.0
-    cx = 683.0
-    cy = 592.0
+    [desktop_widgets.widget.desktop-widget-0000000000000002]
+    box_height = 176.0
+    box_width = 208.0
+    cx = 139.0
+    cy = 520.0
     output = "eDP-1"
-    rotation = -0.0
-    type = "audio_visualizer"
+    placement_height = 768.0
+    placement_width = 1366.0
+    rotation = 0.0
+    type = "fancy_audio_visualizer"
 
-        [desktop_widgets.widget.desktop-widget-0000000000000001.settings]
+        [desktop_widgets.widget.desktop-widget-0000000000000002.settings]
         background = false
-        bands = 56
-        centered = false
-        color_1 = "primary"
-        color_2 = "primary"
-        mirrored = true
-        show_when_idle = false
 
 [dock]
 pinned = [ "kitty" ]
@@ -114,11 +200,13 @@ widget_order = [
     visible = true
 
     [lockscreen_widgets.widget."lockscreen-login-box@eDP-1"]
-    box_height = 120.0
-    box_width = 384.0
-    cx = 699.0
-    cy = 612.0
+    box_height = 196.0
+    box_width = 720.0
+    cx = 683.0
+    cy = 610.0
     output = "eDP-1"
+    placement_height = 768.0
+    placement_width = 1366.0
     rotation = 0.0
     type = "login_box"
 
@@ -129,10 +217,16 @@ widget_order = [
         center_password_text = true
         input_opacity = 1.0
         input_radius = 6.0
+        layout = "regular"
         show_caps_lock = true
         show_keyboard_layout = true
         show_login_button = true
-        show_password_hint = false
+        show_media = true
+        show_media_controls = true
+        show_password_reveal = true
+        show_session_buttons = true
+        show_unlock_hint = true
+        show_weather = true
 
     [lockscreen_widgets.widget.lockscreen-widget-0000000000000001]
     box_height = 144.0
@@ -140,6 +234,8 @@ widget_order = [
     cx = 683.0
     cy = 88.0
     output = "eDP-1"
+    placement_height = 768.0
+    placement_width = 1366.0
     rotation = 0.0
     type = "clock"
 
@@ -155,6 +251,8 @@ widget_order = [
     cx = 683.0
     cy = 320.0
     output = "eDP-1"
+    placement_height = 768.0
+    placement_width = 1366.0
     rotation = 0.0
     type = "sticker"
 
@@ -167,8 +265,10 @@ widget_order = [
     box_height = 48.0
     box_width = 128.0
     cx = 683.0
-    cy = 440.0
+    cy = 448.0
     output = "eDP-1"
+    placement_height = 768.0
+    placement_width = 1366.0
     rotation = 0.0
     type = "label"
 
@@ -185,6 +285,8 @@ widget_order = [
     cx = 683.0
     cy = 320.0
     output = "eDP-1"
+    placement_height = 768.0
+    placement_width = 1366.0
     rotation = 0.0
     type = "fancy_audio_visualizer"
 
@@ -215,7 +317,22 @@ position_vertical = "top_right"
 player_allowlist = [ "Spotify" ]
 
 [plugins]
-enabled = [ "dotnetrob/cat", "yuuto/calculator", "noctalia/timer", "noctalia/screen_recorder" ]
+enabled = [ "dotnetrob/cat", "yuuto/calculator" ]
+
+    [[plugins.source]]
+    kind = "git"
+    location = "https://github.com/noctalia-dev/official-plugins"
+    name = "official"
+
+    [[plugins.source]]
+    kind = "git"
+    location = "https://github.com/noctalia-dev/community-plugins"
+    name = "community"
+
+    [[plugins.source]]
+    kind = "path"
+    location = "/home/jerbe/Projects/noctalia-checklist"
+    name = "checklist-dev"
 
 [shell]
 avatar_path = "~/Pictures/Pfps-and-logos/icon.png"
@@ -224,33 +341,43 @@ niri_overview_type_to_launch_enabled = true
 password_style = "random"
 polkit_agent = true
 screen_time_enabled = true
-show_location = false
-ui_scale = 0.80000000447034836
+settings_show_advanced = false
 time_format = "{:%I:%M %p}"
+ui_scale = 0.80000000447034836
+
+    [shell.animation]
+    enabled = true
 
     [shell.launcher]
+    app_grid = true
     categories = false
+    default_view = "all"
+    layout = "simple"
 
         [shell.launcher.providers.calculator]
         prefix = "="
 
     [shell.panel]
-    clipboard_placement = "attached"
-    clipboard_position = "auto"
-    launcher_placement = "attached"
+    clipboard_position = "bottom_right"
+    control_center_placement = "floating"
+    floating_layer = "top"
+    launcher_position = "bottom_center"
     open_near_click_clipboard = true
     open_near_click_control_center = true
     open_near_click_launcher = true
     open_near_click_wallpaper = true
-    polkit_placement = "attached"
-    polkit_position = "auto"
-    transparency_mode = "soft"
+    session_position = "bottom_left"
+    transparency_mode = "glass"
+    wallpaper_placement = "floating"
+    wallpaper_position = "center"
 
     [shell.screen_corners]
     enabled = true
 
+    [shell.screenshot]
+    confirm_region = true
+
     [shell.session]
-    grid = true
     grid_columns = 4
 
         [[shell.session.actions]]
@@ -294,38 +421,38 @@ time_format = "{:%I:%M %p}"
 
 [theme]
 builtin = "Noctalia"
+community_palette = "Oxocarbon"
 mode = "dark"
 source = "wallpaper"
-wallpaper_scheme = "m3-content"
+wallpaper_scheme = "m3-monochrome"
 
     [theme.templates]
     builtin_ids = [ "btop", "cava", "gtk3", "gtk4", "kcolorscheme", "kitty", "niri", "qt", "starship" ]
-    community_ids = [ "zen-browser", "neovim", "obsidian", "vscode", "zed", "fuzzel", "obs", "papirus-icons" ]
+    community_ids = [ "brave", "neovim", "obsidian", "vscode", "zed", "fuzzel", "obs", "papirus-icons" ]
 
 [wallpaper]
 directory = "~/Pictures/Wallpapers"
-transition = [ "disc", "honeycomb", "stripes", "wipe", "zoom" ]
+transition = [ "fade" ]
 transition_on_startup = true
 
     [wallpaper.automation]
     enabled = false
 
     [wallpaper.default]
-    path = "~/Pictures/Wallpapers/crane.png"
+    path = "/home/jerbe/Pictures/Wallpapers/miau.png"
 
     [wallpaper.last]
-    path = "~/Pictures/Wallpapers/crane.png"
+    path = "/home/jerbe/Pictures/Wallpapers/miau.png"
 
     [wallpaper.monitors.eDP-1]
-    path = "~/Pictures/Wallpapers/crane.png"
-
-[widget.bar]
-show_idle_on_horizontal = false
-type = "noctalia/timer:bar"
+    path = "/home/jerbe/Pictures/Wallpapers/miau.png"
 
 [widget.battery]
 display_mode = "graphic"
-show_label = false
+font_scale = 0.85000000000000009
+
+[widget.bluetooth]
+show_label = true
 
 [widget.cat]
 cat_color = "on_surface"
@@ -333,14 +460,13 @@ cat_color_mode = "custom"
 cat_size = 32
 type = "dotnetrob/cat:cat"
 
-[widget.calculator]
-type = "yuuto/calculator:bar"
-
 [widget.clock]
-format = "{:%I:%M %p|%a,%b%d}"
+format = "{:%I:%M - %a %b %d}"
+timezone = "Asia/Manila"
 
 [widget.control-center]
 color = "primary"
+custom_image = "/home/jerbe/Pictures/Pfps-and-logos/archlinux-logo.svg"
 custom_image_colorize = true
 glyph = "navigation-filled"
 icon_color = "primary"
@@ -351,18 +477,25 @@ anchor = true
 capsule = true
 
 [widget.media]
-art_size = 42
+art_size = 27
 hide_when_no_media = true
-max_length = 149
-min_length = 198
 title_scroll = "on_hover"
+
+[widget.network]
+peek = true
+show_vpn_label = true
 
 [widget.session]
 color = "#FF000C"
 glyph = "power"
 
 [widget.sysmon]
+font_scale = 0.75
 stat = "cpu_temp"
 
+[widget.volume]
+peek = true
+
 [widget.workspaces]
-display = "none"
+font_weight = 400
+show_labels = false
